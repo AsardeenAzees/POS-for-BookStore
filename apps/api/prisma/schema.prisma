@@ -1,0 +1,336 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleName {
+  ADMIN
+  MANAGER
+  CASHIER
+  INVENTORY_STAFF
+  DELIVERY_STAFF
+}
+
+enum StockMovementType {
+  STOCK_IN
+  STOCK_OUT
+  ADJUSTMENT
+  SALE
+  RETURN
+}
+
+enum PaymentMethod {
+  CASH
+  DIGITAL
+  CARD
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum SaleStatus {
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum NotificationEvent {
+  invoice_created
+  low_stock_alert
+  desired_item_available
+}
+
+enum NotificationChannel {
+  SMS
+  WHATSAPP
+  EMAIL
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum NotificationPreference {
+  INVOICE_ONLY
+  STOCK_ALERTS
+  MARKETING
+  UNSUBSCRIBED
+}
+
+enum DesiredItemStatus {
+  OPEN
+  PENDING_REVIEW
+  NOTIFIED
+  CLOSED
+  CANCELLED
+  SPAM
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        RoleName @unique
+  description String
+  users       User[]
+}
+
+model User {
+  id           String          @id @default(cuid())
+  name         String
+  email        String          @unique
+  passwordHash String
+  roleId       String
+  role         Role            @relation(fields: [roleId], references: [id])
+  branchId     String?
+  branch       Branch?         @relation(fields: [branchId], references: [id])
+  active       Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  auditLogs    AuditLog[]
+  sales        Sale[]
+  movements    StockMovement[]
+  createdNotifications Notification[] @relation("NotificationCreatedBy")
+  desiredItemRequests DesiredItemRequest[] @relation("DesiredItemCreatedBy")
+}
+
+model Branch {
+  id          String           @id @default(cuid())
+  name        String
+  code        String           @unique
+  address     String?
+  phone       String?
+  active      Boolean          @default(true)
+  users       User[]
+  inventory   InventoryStock[]
+  movements   StockMovement[]
+  sales       Sale[]
+  desiredItemRequests DesiredItemRequest[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  products    Product[]
+}
+
+model Product {
+  id           String           @id @default(cuid())
+  name         String
+  sku          String           @unique
+  barcode      String?          @unique
+  categoryId   String
+  category     Category         @relation(fields: [categoryId], references: [id])
+  brand        String?
+  publisher    String?
+  author       String?
+  grade        String?
+  imageUrl     String?
+  sellingPrice Decimal          @db.Decimal(12, 2)
+  costPrice    Decimal          @db.Decimal(12, 2)
+  active       Boolean          @default(true)
+  onlineReady  Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  inventory    InventoryStock[]
+  movements    StockMovement[]
+  saleItems    SaleItem[]
+  desiredItemRequests DesiredItemRequest[]
+
+  @@index([name])
+  @@index([sku])
+  @@index([barcode])
+}
+
+model InventoryStock {
+  id             String   @id @default(cuid())
+  branchId       String
+  branch         Branch   @relation(fields: [branchId], references: [id])
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id])
+  quantity       Int      @default(0)
+  lowStockLevel  Int      @default(5)
+  desiredBacklog Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  @@unique([branchId, productId])
+}
+
+model StockMovement {
+  id          String            @id @default(cuid())
+  branchId    String
+  branch      Branch            @relation(fields: [branchId], references: [id])
+  productId   String
+  product     Product           @relation(fields: [productId], references: [id])
+  userId      String
+  user        User              @relation(fields: [userId], references: [id])
+  type        StockMovementType
+  quantity    Int
+  beforeQty   Int
+  afterQty    Int
+  reason      String
+  reference   String?
+  createdAt   DateTime          @default(now())
+}
+
+model Customer {
+  id                     String                 @id @default(cuid())
+  name                   String
+  phone                  String                 @unique
+  whatsapp               String?
+  address                String?
+  notificationPreference NotificationPreference @default(INVOICE_ONLY)
+  desiredItemsNote       String?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  sales                  Sale[]
+  notifications          Notification[]
+  desiredItemRequests    DesiredItemRequest[]
+}
+
+model Sale {
+  id             String        @id @default(cuid())
+  invoiceNumber  String        @unique
+  branchId       String
+  branch         Branch        @relation(fields: [branchId], references: [id])
+  customerId     String?
+  customer       Customer?     @relation(fields: [customerId], references: [id])
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  subtotal       Decimal       @db.Decimal(12, 2)
+  discount       Decimal       @default(0) @db.Decimal(12, 2)
+  total          Decimal       @db.Decimal(12, 2)
+  status         SaleStatus    @default(COMPLETED)
+  source         String        @default("POS")
+  digitalReceipt Json
+  createdAt      DateTime      @default(now())
+  items          SaleItem[]
+  payments       Payment[]
+  notifications  Notification[]
+}
+
+model SaleItem {
+  id        String  @id @default(cuid())
+  saleId    String
+  sale      Sale    @relation(fields: [saleId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Decimal @db.Decimal(12, 2)
+  discount  Decimal @default(0) @db.Decimal(12, 2)
+  total     Decimal @db.Decimal(12, 2)
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  saleId      String
+  sale        Sale          @relation(fields: [saleId], references: [id])
+  method      PaymentMethod
+  amount      Decimal       @db.Decimal(12, 2)
+  status      PaymentStatus @default(PAID)
+  providerRef String?
+  createdAt   DateTime      @default(now())
+}
+
+model Notification {
+  id          String             @id @default(cuid())
+  event       NotificationEvent
+  channel     NotificationChannel
+  status      NotificationStatus @default(PENDING)
+  recipient   String
+  message     String
+  provider    String             @default("mock")
+  providerRef String?
+  error       String?
+  attempts    Int                @default(0)
+  lastAttemptAt DateTime?
+  errorMessage String?
+  providerResponse Json?
+  customerId  String?
+  customer    Customer?          @relation(fields: [customerId], references: [id])
+  saleId      String?
+  sale        Sale?              @relation(fields: [saleId], references: [id])
+  desiredItemRequestId String?
+  desiredItemRequest DesiredItemRequest? @relation(fields: [desiredItemRequestId], references: [id])
+  createdById String?
+  createdBy User? @relation("NotificationCreatedBy", fields: [createdById], references: [id])
+  payload     Json?
+  createdAt   DateTime           @default(now())
+  sentAt      DateTime?
+}
+
+model BusinessSettings {
+  id                                  String   @id @default("singleton")
+  businessName                        String   @default("Book Mart")
+  address                             String?
+  phone                               String?
+  email                               String?
+  taxRegistration                     String?
+  receiptFooterText                   String   @default("Thank you for shopping with us.")
+  defaultCurrency                     String   @default("LKR")
+  smsEnabled                          Boolean  @default(false)
+  smsProvider                         String   @default("mock")
+  invoiceSmsAutoSend                  Boolean  @default(false)
+  desiredItemSmsAutoSend              Boolean  @default(false)
+  lowStockSmsAutoSend                 Boolean  @default(false)
+  requireApprovalBeforeDesiredItemSms Boolean  @default(true)
+  lowStockThresholdDefault            Int      @default(5)
+  smsSenderId                         String?
+  textlkTokenConfigured               Boolean  @default(false)
+  createdAt                           DateTime @default(now())
+  updatedAt                           DateTime @updatedAt
+}
+
+model DesiredItemRequest {
+  id               String            @id @default(cuid())
+  customerId       String?
+  customer         Customer?         @relation(fields: [customerId], references: [id])
+  customerName     String?
+  phone            String
+  requestedItemName String
+  matchedProductId String?
+  matchedProduct   Product?          @relation(fields: [matchedProductId], references: [id])
+  branchId         String?
+  branch           Branch?           @relation(fields: [branchId], references: [id])
+  notes            String?
+  status           DesiredItemStatus @default(OPEN)
+  notifyBySms      Boolean           @default(true)
+  notifyByWhatsapp Boolean           @default(false)
+  adminApproved    Boolean           @default(false)
+  createdById      String?
+  createdBy        User?             @relation("DesiredItemCreatedBy", fields: [createdById], references: [id])
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  notifications    Notification[]
+
+  @@index([requestedItemName])
+  @@index([phone])
+  @@index([status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  entity     String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+}

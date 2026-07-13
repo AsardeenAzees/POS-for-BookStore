@@ -1,0 +1,22 @@
+{
+  "name": "sri-lanka-cloud-pos",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,green \"npm run dev --workspace @pos/api\" \"npm run dev --workspace @pos/web\"",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "prisma:generate": "npm run prisma:generate --workspace @pos/api",
+    "db:migrate": "npm run db:migrate --workspace @pos/api",
+    "db:seed": "npm run db:seed --workspace @pos/api"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3",
+    "typescript": "^5.5.4"
+  }
+}
