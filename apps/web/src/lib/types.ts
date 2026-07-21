@@ -29,6 +29,7 @@ export type Customer = {
   whatsapp?: string;
   address?: string;
   notificationPreference: string;
+  isWalkIn?: boolean;
 };
 export type Sale = {
   id: string;

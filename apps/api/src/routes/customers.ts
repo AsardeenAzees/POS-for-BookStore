@@ -19,8 +19,17 @@ const customerSchema = z.object({
 
 customersRouter.get("/", async (req, res) => {
   const q = String(req.query.q ?? "");
+  const customerType = String(req.query.customerType ?? "all");
+  const typeFilter = customerType === "walk_in"
+    ? { isWalkIn: true }
+    : customerType === "registered"
+      ? { isWalkIn: false }
+      : {};
   const customers = await prisma.customer.findMany({
-    where: q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { phone: { contains: q } }] } : undefined,
+    where: {
+      ...typeFilter,
+      ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" as const } }, { phone: { contains: q } }] } : {})
+    },
     orderBy: { name: "asc" },
     take: 100
   });

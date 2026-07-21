@@ -207,7 +207,9 @@ To send a test SMS from the app: sign in as Admin, open Settings, enable SMS, ch
 
 ## Invoice SMS
 
-After a sale, the POS opens the receipt page. Staff can click `Send SMS Invoice`. If invoice auto-send is enabled in Settings and SMS is enabled, the backend queues/sends the invoice SMS automatically after checkout.
+After a sale, the POS opens the receipt page. Staff can click `Send SMS Invoice`. For a registered customer with a valid saved phone number, the invoice uses that number. For a walk-in sale or a customer without a phone number, the receipt asks staff for a Sri Lankan mobile number and an optional customer name before sending. The normalized phone is saved as a lightweight walk-in customer/contact record and linked to the sale without duplicating an existing contact with the same phone number.
+
+If invoice auto-send is enabled in Settings and SMS is enabled, the backend queues/sends the invoice SMS automatically after checkout. Mock and Text.lk dry-run modes remain safe for development: they create the notification log without sending a real SMS.
 
 SMS sending is a post-sale side effect. If SMS fails, the sale is not rolled back. The failed attempt is stored in Notifications and can be retried by Admin/Manager.
 

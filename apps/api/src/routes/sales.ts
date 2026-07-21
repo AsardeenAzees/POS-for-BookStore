@@ -8,6 +8,7 @@ import { buildInvoiceSms, makeInvoiceNumber } from "../services/invoices.js";
 import { canSendInvoice, createSmsNotification, notificationToSmsStatus, sendNotification } from "../services/notifications.js";
 import { calculateSaleTotals } from "../services/sales.js";
 import { getBusinessSettings, isInvoiceSmsEnabled } from "../services/settings.js";
+import { normalizeSriLankanPhone } from "../services/phone.js";
 
 export const salesRouter = Router();
 
@@ -63,22 +64,42 @@ salesRouter.get("/:id/receipt", requireAuth, salesRoles, async (req, res, next) 
 
 salesRouter.post("/:id/send-invoice-sms", requireAuth, requireRoles(RoleName.ADMIN), async (req, res, next) => {
   try {
+    const input = z.object({
+      phone: z.string().trim().max(30).optional(),
+      customerName: z.string().trim().max(120).optional()
+    }).parse(req.body ?? {});
     const sale = await prisma.sale.findUniqueOrThrow({ where: { id: req.params.id }, include: { branch: true, customer: true, payments: true } });
-    if (!sale.customer?.phone) throw new HttpError(400, "Sale has no customer phone number");
-    if (!canSendInvoice(sale.customer.notificationPreference)) throw new HttpError(400, "Customer is unsubscribed");
+    const savedPhone = sale.customer?.phone ? normalizeSriLankanPhone(sale.customer.phone) : null;
+    const suppliedPhone = input.phone ? normalizeSriLankanPhone(input.phone) : null;
+    if (input.phone && !suppliedPhone) throw new HttpError(400, "Invalid Sri Lankan mobile number");
+    if (!savedPhone && !suppliedPhone) throw new HttpError(400, "Customer phone number is required");
+
+    const customer = savedPhone
+      ? sale.customer!
+      : await saveAndLinkWalkInContact(sale.id, sale.customer, suppliedPhone!, input.customerName);
+    const recipient = savedPhone ?? suppliedPhone!;
+    if (!canSendInvoice(customer.notificationPreference)) throw new HttpError(400, "Customer is unsubscribed");
     const settings = await getBusinessSettings();
     const notification = await createSmsNotification({
       event: "invoice_created",
-      recipient: sale.customer.phone,
+      recipient,
       message: buildInvoiceSms({ businessName: settings.businessName, invoiceNumber: sale.invoiceNumber, total: Number(sale.total), paymentMethod: sale.payments[0]?.method ?? "CASH", contact: settings.phone }),
-      customerId: sale.customer.id,
+      customerId: customer.id,
       saleId: sale.id,
       createdById: req.user!.id,
       payload: { invoiceNumber: sale.invoiceNumber, total: Number(sale.total) },
       sendNow: true
     });
     const sent = notification.status === "PENDING" ? await sendNotification(notification.id) : notification;
-    res.json({ data: { ...sent, smsStatus: notificationToSmsStatus(sent) } });
+    const smsStatus = notificationToSmsStatus(sent);
+    const message = smsStatus === "dry_run"
+      ? "Invoice SMS logged successfully in dry-run mode."
+      : smsStatus === "sent"
+        ? "Invoice SMS sent successfully."
+        : smsStatus === "failed"
+          ? `Invoice SMS failed. The customer contact was saved.${sent.errorMessage ? ` ${sent.errorMessage}` : ""}`
+          : `Invoice SMS was not sent${sent.errorMessage ? `: ${sent.errorMessage}` : "."}`;
+    res.json({ message, data: { ...sent, smsStatus, message } });
   } catch (error) {
     next(error);
   }
@@ -172,6 +193,49 @@ async function findAccessibleSale(id: string, user: NonNullable<Express.Request[
   });
   if (!sale) throw new HttpError(404, "Sale not found");
   return sale;
+}
+
+async function saveAndLinkWalkInContact(
+  saleId: string,
+  linkedCustomer: { id: string; name: string; phone: string; isWalkIn: boolean; notificationPreference: string } | null,
+  phone: string,
+  customerName?: string
+) {
+  const localPhone = `0${phone.slice(2)}`;
+  const canonicalCustomer = await prisma.customer.findUnique({ where: { phone } });
+  const matchingCustomer = canonicalCustomer ?? await prisma.customer.findFirst({
+    where: { phone: { in: [`+${phone}`, localPhone] } }
+  });
+
+  let customer;
+  if (matchingCustomer) {
+    customer = await prisma.customer.update({
+      where: { id: matchingCustomer.id },
+      data: {
+        phone,
+        ...(matchingCustomer.isWalkIn && customerName ? { name: customerName } : {})
+      }
+    });
+  } else if (linkedCustomer) {
+    customer = await prisma.customer.update({
+      where: { id: linkedCustomer.id },
+      data: {
+        phone,
+        ...(linkedCustomer.isWalkIn && customerName ? { name: customerName } : {})
+      }
+    });
+  } else {
+    customer = await prisma.customer.create({
+      data: {
+        name: customerName || `Walk-in customer ${phone.slice(-4)}`,
+        phone,
+        isWalkIn: true
+      }
+    });
+  }
+
+  await prisma.sale.update({ where: { id: saleId }, data: { customerId: customer.id } });
+  return customer;
 }
 
 async function runSerializable<T>(operation: () => Promise<T>) {
