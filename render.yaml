@@ -3,7 +3,7 @@ services:
     name: sri-lanka-pos-api
     runtime: node
     plan: free
-    buildCommand: npm install && npm run prisma:generate --workspace @pos/api && npm run build --workspace @pos/api
+    buildCommand: npm ci --include=dev && npm run prisma:generate --workspace @pos/api && npm run build --workspace @pos/api
     startCommand: npm run start --workspace @pos/api
     healthCheckPath: /health
     envVars:

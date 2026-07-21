@@ -80,7 +80,7 @@ The committed Render settings are:
 
 ```text
 Root Directory: repository root (blank)
-Build Command: npm install && npm run prisma:generate --workspace @pos/api && npm run build --workspace @pos/api
+Build Command: npm ci --include=dev && npm run prisma:generate --workspace @pos/api && npm run build --workspace @pos/api
 Start Command: npm run start --workspace @pos/api
 Health Check Path: /health
 Instance Type: Free
@@ -89,6 +89,8 @@ Instance Type: Free
 The API binds to `0.0.0.0` and uses Render's `PORT` automatically. Docker is not used on Render. Migrations and seed data are deliberately not run in the start command.
 
 If you configure a Web Service manually instead of using the Blueprint, copy the commands and environment values above exactly.
+
+`--include=dev` is required during the API build because TypeScript, Prisma CLI, and the Express/CORS type declarations are build-time development dependencies. Render can still run the compiled service with `NODE_ENV=production`; these packages are needed to create `dist`, not by the `start` command.
 
 ## Step 4: Run the Prisma Migrations Against Neon
 
@@ -268,6 +270,12 @@ Delete obviously artificial sale/customer data before presenting the final demo 
 ### Render service is sleeping or the first request is slow
 
 Render Free web services sleep after inactivity and can take roughly a minute to wake. Open the `/health` URL first and wait for HTTP 200 before opening the POS frontend. This is normal for a free demo and is not acceptable for an always-on shop POS.
+
+### Render build cannot find Express types or reports implicit `any`
+
+- Confirm the build command begins with `npm ci --include=dev`.
+- Do not use plain `npm install` when `NODE_ENV=production` is present during the build, because npm can omit TypeScript and `@types/*` development dependencies.
+- Commit and push the updated `render.yaml`, allow the Blueprint to sync, then choose **Manual Deploy > Clear build cache & deploy**.
 
 ### Frontend calls localhost or the wrong backend
 
