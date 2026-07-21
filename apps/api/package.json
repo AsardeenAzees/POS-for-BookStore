@@ -11,6 +11,7 @@
     "test": "tsx --test src/services/phone.test.ts src/middleware/auth.test.ts src/services/sales.test.ts src/services/desiredItems.test.ts",
     "prisma:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "test:sms": "tsx scripts/test-sms.ts"
   },

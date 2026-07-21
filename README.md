@@ -51,6 +51,12 @@ On Windows PowerShell:
 Copy-Item apps/api/.env.example apps/api/.env
 ```
 
+Set `DATABASE_URL` in that local file to the Docker database before running Prisma:
+
+```env
+DATABASE_URL="postgresql://pos_user:pos_password@localhost:5432/pos_db?schema=public"
+```
+
 3. Start PostgreSQL:
 
 ```bash
@@ -107,16 +113,18 @@ npm test
 npm run build
 npm run prisma:generate --workspace @pos/api
 npm run db:migrate --workspace @pos/api -- --name init
+npm run db:deploy --workspace @pos/api
 npm run db:seed --workspace @pos/api
 ```
 
 ## Environment Variables
 
-`apps/api/.env.example` contains local development values only. Replace `JWT_SECRET` before using any deployed environment.
+`apps/api/.env.example` contains safe placeholders. For local Docker development, populate `DATABASE_URL` with the local value shown in Setup. Replace `JWT_SECRET` before using any deployed environment.
 
 ```env
-DATABASE_URL="postgresql://pos_user:pos_password@localhost:5432/pos_db?schema=public"
-JWT_SECRET="change-this-long-random-secret"
+DATABASE_URL=""
+DIRECT_URL=""
+JWT_SECRET="replace-with-strong-secret"
 JWT_EXPIRES_IN="12h"
 PORT=4000
 CORS_ORIGIN="http://localhost:5173"
@@ -129,11 +137,20 @@ TEXTLK_SENDER_ID="BOOKMART"
 TEXTLK_DRY_RUN=true
 TEXTLK_SEND_ENDPOINT="/sms/send"
 TEXTLK_TIMEOUT_MS=10000
+TEXTLK_TOKEN_MODE="body"
 TEXTLK_MESSAGE_TYPE="plain"
 SEED_USER_PASSWORD=""
 ```
 
-For the web app, set `VITE_API_URL` only if the API is not running on `http://localhost:4000`.
+For the web app, copy `apps/web/.env.example` when you need to override its local API URL. Vercel must set `VITE_API_URL` to the Render service URL.
+
+## Free Demo Deployment
+
+The monorepo is prepared for a free demonstration deployment using Vercel for the frontend, a Render Free Web Service for the API, Neon PostgreSQL, and GitHub source hosting.
+
+Follow the complete beginner-friendly instructions in [`docs/DEPLOYMENT_FREE_DEMO.md`](docs/DEPLOYMENT_FREE_DEMO.md). The guide includes the exact build/start commands, Neon migration and one-time seed process, environment variables, CORS setup, troubleshooting, security checklist, and live acceptance test.
+
+Free hosting is for demonstration only and must not be used for live business-critical POS data.
 
 ## Text.lk SMS Configuration
 

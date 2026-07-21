@@ -44,7 +44,7 @@ async function main() {
   for (const [name, email, role, branchId] of users) {
     await prisma.user.upsert({
       where: { email },
-      update: { roleId: roleId(role), branchId },
+      update: {},
       create: { name, email, passwordHash, roleId: roleId(role), branchId }
     });
   }
@@ -108,17 +108,17 @@ async function main() {
   for (const item of products) {
     const product = await prisma.product.upsert({
       where: { sku: item.sku },
-      update: item,
+      update: {},
       create: item
     });
     await prisma.inventoryStock.upsert({
       where: { branchId_productId: { branchId: colombo.id, productId: product.id } },
-      update: { quantity: product.sku.includes("PEN") ? 250 : 30, lowStockLevel: product.sku.includes("PEN") ? 50 : 8 },
+      update: {},
       create: { branchId: colombo.id, productId: product.id, quantity: product.sku.includes("PEN") ? 250 : 30, lowStockLevel: product.sku.includes("PEN") ? 50 : 8 }
     });
     await prisma.inventoryStock.upsert({
       where: { branchId_productId: { branchId: kandy.id, productId: product.id } },
-      update: { quantity: product.sku.includes("PEN") ? 150 : 12, lowStockLevel: product.sku.includes("PEN") ? 40 : 6 },
+      update: {},
       create: { branchId: kandy.id, productId: product.id, quantity: product.sku.includes("PEN") ? 150 : 12, lowStockLevel: product.sku.includes("PEN") ? 40 : 6 }
     });
   }

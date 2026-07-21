@@ -19,8 +19,9 @@ import { apiLogger } from "./middleware/apiLogger.js";
 
 const app = express();
 
+app.set("trust proxy", 1);
 app.use(helmet());
-const corsOrigins = config.CORS_ORIGIN.split(",").map((origin) => origin.trim());
+const corsOrigins = config.CORS_ORIGIN.split(",").map((origin) => origin.trim()).filter(Boolean);
 app.use(cors({ origin: corsOrigins, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
 app.use(apiLogger);
@@ -43,8 +44,8 @@ app.use("/api/desired-items", desiredItemsRouter);
 app.use(notFound);
 app.use(errorHandler);
 
-const server = app.listen(config.PORT, () => {
-  console.log(`POS API listening on http://localhost:${config.PORT}`);
+const server = app.listen(config.PORT, "0.0.0.0", () => {
+  console.log(`POS API listening on 0.0.0.0:${config.PORT}`);
 });
 
 server.on("error", (error: NodeJS.ErrnoException) => {

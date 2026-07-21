@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: sri-lanka-pos-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run prisma:generate --workspace @pos/api && npm run build --workspace @pos/api
+    startCommand: npm run start --workspace @pos/api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 12h
+      - key: CORS_ORIGIN
+        sync: false
+      - key: SMS_PROVIDER
+        value: mock
+      - key: SMS_AUTO_SEND_INVOICE
+        value: "false"
+      - key: SMS_AUTO_SEND_STOCK_ALERT
+        value: "false"
+      - key: TEXTLK_DRY_RUN
+        value: "true"
+      - key: SEED_USER_PASSWORD
+        sync: false
