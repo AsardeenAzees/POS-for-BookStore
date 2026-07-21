@@ -14,20 +14,32 @@ export function Inventory() {
   const [form, setForm] = useState({ branchId: "", productId: "", type: "STOCK_IN", quantity: 1, reason: "" });
   const [productForm, setProductForm] = useState({ name: "", sku: "", barcode: "", categoryId: "", brand: "", publisher: "", author: "", grade: "", sellingPrice: 0, costPrice: 0, active: true });
   const [duplicates, setDuplicates] = useState<Product[]>([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
 
   async function load() {
-    const [stockRows, branchRows, productRows, categoryRows, movementRows] = await Promise.all([api<Stock[]>("/api/inventory/stock"), api<Branch[]>("/api/branches"), api<Product[]>("/api/products"), api<Category[]>("/api/categories"), api<any[]>("/api/inventory/movements")]);
-    setStock(stockRows); setBranches(branchRows); setProducts(productRows); setCategories(categoryRows); setMovements(movementRows);
-    setForm((f) => ({ ...f, branchId: f.branchId || branchRows[0]?.id || "", productId: f.productId || productRows[0]?.id || "" }));
-    setProductForm((f) => ({ ...f, categoryId: f.categoryId || categoryRows[0]?.id || "" }));
+    try {
+      const [stockRows, branchRows, productRows, categoryRows, movementRows] = await Promise.all([api<Stock[]>("/api/inventory/stock"), api<Branch[]>("/api/branches"), api<Product[]>("/api/products"), api<Category[]>("/api/categories"), api<any[]>("/api/inventory/movements")]);
+      setStock(stockRows); setBranches(branchRows); setProducts(productRows); setCategories(categoryRows); setMovements(movementRows);
+      setForm((f) => ({ ...f, branchId: f.branchId || branchRows[0]?.id || "", productId: f.productId || productRows[0]?.id || "" }));
+      setProductForm((f) => ({ ...f, categoryId: f.categoryId || categoryRows[0]?.id || "" }));
+    } catch (error) {
+      toast({ type: "error", message: error instanceof Error ? error.message : "Unable to load inventory" });
+    } finally {
+      setLoading(false);
+    }
   }
   useEffect(() => { void load(); }, []);
 
   async function submit() {
-    await api("/api/inventory/movements", { method: "POST", body: JSON.stringify(form) });
-    setForm({ ...form, quantity: 1, reason: "" });
-    toast({ type: "success", message: "Stock movement recorded." });
-    await load();
+    try {
+      await api("/api/inventory/movements", { method: "POST", body: JSON.stringify(form) });
+      setForm({ ...form, quantity: 1, reason: "" });
+      toast({ type: "success", message: "Stock movement recorded." });
+      await load();
+    } catch (error) {
+      toast({ type: "error", message: error instanceof Error ? error.message : "Stock movement failed" });
+    }
   }
 
   async function checkDuplicates() {
@@ -36,16 +48,21 @@ export function Inventory() {
   }
 
   async function addProduct() {
-    await api("/api/products", { method: "POST", body: JSON.stringify({ ...productForm, barcode: productForm.barcode || null }) });
-    toast({ type: "success", message: "Product added." });
-    setProductForm({ name: "", sku: "", barcode: "", categoryId: categories[0]?.id ?? "", brand: "", publisher: "", author: "", grade: "", sellingPrice: 0, costPrice: 0, active: true });
-    setDuplicates([]);
-    await load();
+    try {
+      await api("/api/products", { method: "POST", body: JSON.stringify({ ...productForm, barcode: productForm.barcode || null }) });
+      toast({ type: "success", message: "Product added." });
+      setProductForm({ name: "", sku: "", barcode: "", categoryId: categories[0]?.id ?? "", brand: "", publisher: "", author: "", grade: "", sellingPrice: 0, costPrice: 0, active: true });
+      setDuplicates([]);
+      await load();
+    } catch (error) {
+      toast({ type: "error", message: error instanceof Error ? error.message : "Unable to add product" });
+    }
   }
 
   return (
     <section className="page">
       <div className="page-head"><h1>Inventory</h1><div className="button-row"><button onClick={() => downloadCsv("/api/reports/export/branch-stock", "branch-stock.csv")}>Export stock</button><button onClick={() => window.print()}>Print</button></div></div>
+      {loading && <div className="empty-state">Loading inventory...</div>}
       <div className="panel form-grid">
         <input placeholder="Product name" value={productForm.name} onBlur={checkDuplicates} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} />
         <input placeholder="SKU" value={productForm.sku} onBlur={checkDuplicates} onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} />
@@ -63,11 +80,12 @@ export function Inventory() {
         <select value={form.branchId} onChange={(e) => setForm({ ...form, branchId: e.target.value })}>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
         <select value={form.productId} onChange={(e) => setForm({ ...form, productId: e.target.value })}>{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
         <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}><option>STOCK_IN</option><option>STOCK_OUT</option><option>ADJUSTMENT</option></select>
-        <input type="number" min="1" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} />
+        <label>{form.type === "ADJUSTMENT" ? "New on-hand quantity" : "Quantity"}<input type="number" min={form.type === "ADJUSTMENT" ? 0 : 1} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} /></label>
         <input placeholder="Reason required" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
         <button className="primary" onClick={() => void submit()}>Record movement</button>
       </div>
-      <div className="panel"><table><thead><tr><th>Product</th><th>Branch</th><th>Qty</th><th>Low level</th></tr></thead><tbody>{stock.map((row) => <tr key={row.id}><td>{row.product.name}</td><td>{row.branch.name}</td><td>{row.quantity}</td><td>{row.lowStockLevel}</td></tr>)}</tbody></table></div>
+      <div className="search"><input placeholder="Search stock by product, SKU, or branch" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
+      <div className="panel"><table><thead><tr><th>Product</th><th>Branch</th><th>Qty</th><th>Low level</th></tr></thead><tbody>{stock.filter((row) => `${row.product.name} ${row.product.sku} ${row.branch.name}`.toLowerCase().includes(search.toLowerCase())).map((row) => <tr key={row.id}><td>{row.product.name}</td><td>{row.branch.name}</td><td>{row.quantity}</td><td>{row.lowStockLevel}</td></tr>)}</tbody></table></div>
       <div className="panel"><h2>Stock Movement History</h2><table><thead><tr><th>Date</th><th>Product</th><th>Branch</th><th>Type</th><th>Qty</th><th>Reason</th><th>Staff</th></tr></thead><tbody>{movements.map((row) => <tr key={row.id}><td>{new Date(row.createdAt).toLocaleString()}</td><td>{row.product.name}</td><td>{row.branch.name}</td><td>{row.type}</td><td>{row.quantity}</td><td>{row.reason}</td><td>{row.user?.name}</td></tr>)}</tbody></table></div>
     </section>
   );

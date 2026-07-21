@@ -1,16 +1,24 @@
 import { useEffect, useState } from "react";
 import { api, downloadCsv } from "../lib/api";
 import type { Customer } from "../lib/types";
+import { useToast } from "../components/Toast";
 
 export function Customers() {
+  const toast = useToast();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [search, setSearch] = useState("");
   const [form, setForm] = useState({ name: "", phone: "", whatsapp: "", address: "", notificationPreference: "INVOICE_ONLY" });
   const load = () => api<Customer[]>("/api/customers").then(setCustomers);
   useEffect(() => { void load(); }, []);
   async function submit() {
-    await api("/api/customers", { method: "POST", body: JSON.stringify(form) });
-    setForm({ name: "", phone: "", whatsapp: "", address: "", notificationPreference: "INVOICE_ONLY" });
-    await load();
+    try {
+      await api("/api/customers", { method: "POST", body: JSON.stringify(form) });
+      setForm({ name: "", phone: "", whatsapp: "", address: "", notificationPreference: "INVOICE_ONLY" });
+      toast({ type: "success", message: "Customer added." });
+      await load();
+    } catch (error) {
+      toast({ type: "error", message: error instanceof Error ? error.message : "Unable to add customer" });
+    }
   }
   return (
     <section className="page">
@@ -23,7 +31,8 @@ export function Customers() {
         <select value={form.notificationPreference} onChange={(e) => setForm({ ...form, notificationPreference: e.target.value })}><option>INVOICE_ONLY</option><option>STOCK_ALERTS</option><option>MARKETING</option><option>UNSUBSCRIBED</option></select>
         <button className="primary" onClick={() => void submit()}>Add customer</button>
       </div>
-      <div className="panel"><table><thead><tr><th>Name</th><th>Phone</th><th>WhatsApp</th><th>Preference</th></tr></thead><tbody>{customers.map((c) => <tr key={c.id}><td>{c.name}</td><td>{c.phone}</td><td>{c.whatsapp}</td><td><select value={c.notificationPreference} onChange={async (e) => { await api(`/api/customers/${c.id}/preference`, { method: "PATCH", body: JSON.stringify({ notificationPreference: e.target.value }) }); await load(); }}><option>INVOICE_ONLY</option><option>STOCK_ALERTS</option><option>MARKETING</option><option>UNSUBSCRIBED</option></select></td></tr>)}</tbody></table></div>
+      <div className="search"><input placeholder="Search customers by name or phone" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
+      <div className="panel"><table><thead><tr><th>Name</th><th>Phone</th><th>WhatsApp</th><th>Preference</th></tr></thead><tbody>{customers.filter((customer) => `${customer.name} ${customer.phone}`.toLowerCase().includes(search.toLowerCase())).map((c) => <tr key={c.id}><td>{c.name}</td><td>{c.phone}</td><td>{c.whatsapp}</td><td><select value={c.notificationPreference} onChange={async (e) => { try { await api(`/api/customers/${c.id}/preference`, { method: "PATCH", body: JSON.stringify({ notificationPreference: e.target.value }) }); await load(); } catch (error) { toast({ type: "error", message: error instanceof Error ? error.message : "Unable to update preference" }); } }}><option>INVOICE_ONLY</option><option>STOCK_ALERTS</option><option>MARKETING</option><option>UNSUBSCRIBED</option></select></td></tr>)}</tbody></table></div>
     </section>
   );
 }

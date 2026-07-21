@@ -73,6 +73,7 @@ export type NotificationLog = {
   recipient: string;
   message: string;
   status: string;
+  smsStatus?: string;
   attempts: number;
   errorMessage?: string;
   createdAt: string;

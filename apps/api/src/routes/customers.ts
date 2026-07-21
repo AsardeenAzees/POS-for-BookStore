@@ -1,10 +1,13 @@
 import { Router } from "express";
-import { NotificationPreference } from "@prisma/client";
+import { NotificationPreference, RoleName } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../db.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, requireRoles } from "../middleware/auth.js";
+import { normalizeSriLankanPhone } from "../services/phone.js";
 
 export const customersRouter = Router();
+
+customersRouter.use(requireAuth, requireRoles(RoleName.ADMIN, RoleName.MANAGER, RoleName.CASHIER));
 
 const customerSchema = z.object({
   name: z.string().min(2),
@@ -14,7 +17,7 @@ const customerSchema = z.object({
   notificationPreference: z.nativeEnum(NotificationPreference).default("INVOICE_ONLY")
 });
 
-customersRouter.get("/", requireAuth, async (req, res) => {
+customersRouter.get("/", async (req, res) => {
   const q = String(req.query.q ?? "");
   const customers = await prisma.customer.findMany({
     where: q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { phone: { contains: q } }] } : undefined,
@@ -24,7 +27,7 @@ customersRouter.get("/", requireAuth, async (req, res) => {
   res.json({ data: customers });
 });
 
-customersRouter.get("/:id/history", requireAuth, async (req, res) => {
+customersRouter.get("/:id/history", async (req, res) => {
   const customer = await prisma.customer.findUnique({
     where: { id: req.params.id },
     include: { sales: { include: { items: { include: { product: true } }, payments: true }, orderBy: { createdAt: "desc" } } }
@@ -32,15 +35,20 @@ customersRouter.get("/:id/history", requireAuth, async (req, res) => {
   res.json({ data: customer });
 });
 
-customersRouter.post("/", requireAuth, async (req, res, next) => {
+customersRouter.post("/", async (req, res, next) => {
   try {
-    res.status(201).json({ data: await prisma.customer.create({ data: customerSchema.parse(req.body) }) });
+    const input = customerSchema.parse(req.body);
+    const phone = normalizeSriLankanPhone(input.phone);
+    const whatsapp = input.whatsapp ? normalizeSriLankanPhone(input.whatsapp) : null;
+    if (!phone) return res.status(400).json({ error: "Invalid Sri Lankan mobile number" });
+    if (input.whatsapp && !whatsapp) return res.status(400).json({ error: "Invalid Sri Lankan WhatsApp number" });
+    res.status(201).json({ data: await prisma.customer.create({ data: { ...input, phone, whatsapp } }) });
   } catch (error) {
     next(error);
   }
 });
 
-customersRouter.patch("/:id/preference", requireAuth, async (req, res, next) => {
+customersRouter.patch("/:id/preference", async (req, res, next) => {
   try {
     const input = z.object({ notificationPreference: z.nativeEnum(NotificationPreference) }).parse(req.body);
     res.json({ data: await prisma.customer.update({ where: { id: req.params.id }, data: input }) });

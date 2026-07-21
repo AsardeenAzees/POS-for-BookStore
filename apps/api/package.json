@@ -8,17 +8,19 @@
     "build": "prisma generate && tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test src/services/phone.test.ts src/middleware/auth.test.ts src/services/sales.test.ts src/services/desiredItems.test.ts",
     "prisma:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "test:sms": "tsx scripts/test-sms.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0",
     "@pos/shared": "file:../../packages/shared",
+    "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2",
+    "express": "^4.22.2",
     "express-rate-limit": "^7.4.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",

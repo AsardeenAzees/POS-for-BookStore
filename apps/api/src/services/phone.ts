@@ -12,5 +12,5 @@ export function maskPhone(phone: string) {
 
 export function maskSecret(secret: string) {
   if (!secret) return "not_configured";
-  return secret.length <= 8 ? "configured" : `${secret.slice(0, 3)}...${secret.slice(-3)}`;
+  return "configured";
 }

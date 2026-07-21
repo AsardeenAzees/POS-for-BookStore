@@ -4,8 +4,8 @@ import { api, setSession, type Session } from "../lib/api";
 
 export function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("admin@bookshop.lk");
-  const [password, setPassword] = useState("Password123!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   async function submit(event: FormEvent) {

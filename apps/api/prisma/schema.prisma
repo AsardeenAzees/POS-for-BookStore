@@ -117,8 +117,20 @@ model Branch {
   movements   StockMovement[]
   sales       Sale[]
   desiredItemRequests DesiredItemRequest[]
+  invoiceSequences InvoiceSequence[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+}
+
+model InvoiceSequence {
+  id        String   @id @default(cuid())
+  branchId  String
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  dateKey   String
+  lastValue Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, dateKey])
 }
 
 model Category {

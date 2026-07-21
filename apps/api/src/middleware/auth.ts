@@ -46,3 +46,11 @@ export function requireRoles(...roles: RoleName[]) {
     next();
   };
 }
+
+export function canAccessBranch(user: AuthUser, branchId: string | null | undefined) {
+  return user.role === RoleName.ADMIN || Boolean(branchId && user.branchId === branchId);
+}
+
+export function branchScope(user: AuthUser) {
+  return user.role === RoleName.ADMIN ? undefined : user.branchId ?? "__unassigned__";
+}

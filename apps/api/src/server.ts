@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import { config } from "./config.js";
 import { auditLogger } from "./middleware/audit.js";
@@ -16,6 +15,7 @@ import { notificationsRouter } from "./routes/notifications.js";
 import { metaRouter } from "./routes/meta.js";
 import { settingsRouter } from "./routes/settings.js";
 import { desiredItemsRouter } from "./routes/desiredItems.js";
+import { apiLogger } from "./middleware/apiLogger.js";
 
 const app = express();
 
@@ -23,7 +23,7 @@ app.use(helmet());
 const corsOrigins = config.CORS_ORIGIN.split(",").map((origin) => origin.trim());
 app.use(cors({ origin: corsOrigins, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
-app.use(morgan("dev"));
+app.use(apiLogger);
 app.use(rateLimit({ windowMs: 60_000, limit: 300 }));
 const authLimiter = rateLimit({ windowMs: 60_000, limit: 20 });
 const smsLimiter = rateLimit({ windowMs: 60_000, limit: 20 });
@@ -43,6 +43,14 @@ app.use("/api/desired-items", desiredItemsRouter);
 app.use(notFound);
 app.use(errorHandler);
 
-app.listen(config.PORT, () => {
+const server = app.listen(config.PORT, () => {
   console.log(`POS API listening on http://localhost:${config.PORT}`);
+});
+
+server.on("error", (error: NodeJS.ErrnoException) => {
+  if (error.code === "EADDRINUSE") {
+    console.error(`Port ${config.PORT} is already in use. Stop the existing API process or use the terminal where it is already running to see logs.`);
+    process.exit(1);
+  }
+  console.error(error);
 });

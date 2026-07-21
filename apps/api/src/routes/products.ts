@@ -2,7 +2,7 @@ import { Router } from "express";
 import { RoleName } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../db.js";
-import { requireAuth, requireRoles } from "../middleware/auth.js";
+import { branchScope, requireAuth, requireRoles } from "../middleware/auth.js";
 
 export const productsRouter = Router();
 
@@ -21,8 +21,11 @@ const productSchema = z.object({
   active: z.boolean().default(true)
 });
 
-productsRouter.get("/", requireAuth, async (req, res) => {
+const productReadRoles = requireRoles(RoleName.ADMIN, RoleName.MANAGER, RoleName.CASHIER, RoleName.INVENTORY_STAFF);
+
+productsRouter.get("/", requireAuth, productReadRoles, async (req, res) => {
   const q = String(req.query.q ?? "");
+  const branchId = branchScope(req.user!);
   const products = await prisma.product.findMany({
     where: q
       ? {
@@ -35,25 +38,25 @@ productsRouter.get("/", requireAuth, async (req, res) => {
           ]
         }
       : undefined,
-    include: { category: true, inventory: { include: { branch: true } } },
+    include: { category: true, inventory: { where: branchId ? { branchId } : undefined, include: { branch: true } } },
     orderBy: { name: "asc" },
     take: 100
   });
   res.json({ data: products });
 });
 
-productsRouter.get("/duplicate-check", requireAuth, async (req, res) => {
+productsRouter.get("/duplicate-check", requireAuth, requireRoles(RoleName.ADMIN, RoleName.MANAGER, RoleName.INVENTORY_STAFF), async (req, res) => {
   const name = String(req.query.name ?? "");
   const sku = String(req.query.sku ?? "");
   const barcode = String(req.query.barcode ?? "");
+  const filters = [
+    sku ? { sku: { equals: sku, mode: "insensitive" as const } } : null,
+    barcode ? { barcode: { equals: barcode, mode: "insensitive" as const } } : null,
+    name ? { name: { contains: name, mode: "insensitive" as const } } : null
+  ].filter((filter): filter is NonNullable<typeof filter> => Boolean(filter));
+  if (!filters.length) return res.json({ data: [] });
   const matches = await prisma.product.findMany({
-    where: {
-      OR: [
-        sku ? { sku: { equals: sku, mode: "insensitive" } } : {},
-        barcode ? { barcode: { equals: barcode, mode: "insensitive" } } : {},
-        name ? { name: { contains: name, mode: "insensitive" } } : {}
-      ]
-    },
+    where: { OR: filters },
     take: 10
   });
   res.json({ data: matches });
@@ -62,11 +65,14 @@ productsRouter.get("/duplicate-check", requireAuth, async (req, res) => {
 productsRouter.post("/", requireAuth, requireRoles(RoleName.ADMIN, RoleName.MANAGER, RoleName.INVENTORY_STAFF), async (req, res, next) => {
   try {
     const input = productSchema.parse(req.body);
-    const product = await prisma.product.create({ data: input });
-    const branches = await prisma.branch.findMany();
-    await prisma.inventoryStock.createMany({
-      data: branches.map((branch) => ({ branchId: branch.id, productId: product.id, quantity: 0 })),
-      skipDuplicates: true
+    const product = await prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({ data: input });
+      const branches = await tx.branch.findMany({ where: { active: true } });
+      await tx.inventoryStock.createMany({
+        data: branches.map((branch) => ({ branchId: branch.id, productId: created.id, quantity: 0 })),
+        skipDuplicates: true
+      });
+      return created;
     });
     res.status(201).json({ data: product });
   } catch (error) {

@@ -81,9 +81,9 @@ Open:
 - Web app: http://localhost:5173
 - API health: http://localhost:4000/health
 
-## Test Users
+## Local Development Test Users
 
-All seeded users use this password:
+For local development only, seeded users use this password unless `SEED_USER_PASSWORD` is set:
 
 ```text
 Password123!
@@ -97,10 +97,13 @@ Password123!
 | Inventory Staff | inventory@bookshop.lk |
 | Delivery Staff | delivery@bookshop.lk |
 
+The seed command refuses to create fresh production users with the documented password. Set a strong `SEED_USER_PASSWORD` before running `db:seed` with `NODE_ENV=production`, and rotate or remove development accounts before any deployment.
+
 ## Useful Commands
 
 ```bash
 npm run lint
+npm test
 npm run build
 npm run prisma:generate --workspace @pos/api
 npm run db:migrate --workspace @pos/api -- --name init
@@ -120,42 +123,64 @@ CORS_ORIGIN="http://localhost:5173"
 SMS_PROVIDER=mock
 SMS_AUTO_SEND_INVOICE=false
 SMS_AUTO_SEND_STOCK_ALERT=false
-TEXTLK_API_BASE_URL="https://app.text.lk/api/v3"
+TEXTLK_API_BASE_URL="https://app.text.lk/api/http"
 TEXTLK_API_TOKEN=""
-TEXTLK_SENDER_ID=""
+TEXTLK_SENDER_ID="BOOKMART"
 TEXTLK_DRY_RUN=true
-TEXTLK_SEND_ENDPOINT="sms/send"
+TEXTLK_SEND_ENDPOINT="/sms/send"
 TEXTLK_TIMEOUT_MS=10000
-TEXTLK_RECIPIENT_FIELD="recipient"
-TEXTLK_MESSAGE_FIELD="message"
-TEXTLK_SENDER_FIELD="sender_id"
-TEXTLK_TYPE_FIELD="type"
 TEXTLK_MESSAGE_TYPE="plain"
-TEXTLK_TOKEN_MODE="bearer"
+SEED_USER_PASSWORD=""
 ```
 
 For the web app, set `VITE_API_URL` only if the API is not running on `http://localhost:4000`.
 
 ## Text.lk SMS Configuration
 
+> Real Text.lk sending is pending final API parameter confirmation. Mock/dry-run mode is safe for development.
+
 Real Text.lk secrets must only be placed in `apps/api/.env`. Do not commit that file and do not paste real API tokens into documentation, screenshots, or support tickets.
 
-Use `SMS_PROVIDER=mock` for local testing, or `SMS_PROVIDER=textlk` for Text.lk. Keep `TEXTLK_DRY_RUN=true` until the endpoint, field names, and sender ID are confirmed against your Text.lk HTTP API account.
+Use `SMS_PROVIDER=mock` for local testing, or `SMS_PROVIDER=textlk` for Text.lk. Keep `TEXTLK_DRY_RUN=true` until the approved Sender ID is confirmed against your Text.lk account.
 
-The adapter supports configurable endpoint and field names:
+The Text.lk adapter uses the documented SMS endpoint and request body:
 
-- `TEXTLK_API_BASE_URL`, default `https://app.text.lk/api/v3`
-- `TEXTLK_SEND_ENDPOINT`, default `sms/send`
-- `TEXTLK_RECIPIENT_FIELD`
-- `TEXTLK_MESSAGE_FIELD`
-- `TEXTLK_SENDER_FIELD`
-- `TEXTLK_TYPE_FIELD`
+- `TEXTLK_API_BASE_URL`, default `https://app.text.lk/api/http`
+- `TEXTLK_SEND_ENDPOINT`, default `/sms/send`
 - `TEXTLK_MESSAGE_TYPE`
-- `TEXTLK_TOKEN_MODE`: `bearer`, `query`, `body`, or `none`
+
+The final URL is built as:
+
+```text
+https://app.text.lk/api/http/sms/send
+```
+
+It sends:
+
+```json
+{
+  "recipient": "947XXXXXXXX",
+  "sender_id": "YOUR_APPROVED_SENDER_ID",
+  "type": "plain",
+  "message": "Invoice message"
+}
+```
+
+Authorization is always sent as `Authorization: Bearer TEXTLK_API_TOKEN`.
+
+Text.lk requires an approved Sender ID. Add it in Admin Settings or set `TEXTLK_SENDER_ID` in `apps/api/.env`.
 
 The UI shows only token status, never the full token. Provider responses are stored as safe/masked JSON.
 
-To send a test SMS: sign in as Admin, open Settings, enable SMS, choose Mock or Text.lk, enter a phone number, and click Test SMS. Check Notifications for sent, dry-run, failed, or skipped status.
+To test from the terminal:
+
+```bash
+npm run test:sms --workspace @pos/api -- 0758396064
+```
+
+With the default `SMS_PROVIDER=mock`, the command does not call Text.lk and no phone will receive an SMS. It records a dry-run only. With `SMS_PROVIDER=textlk` and `TEXTLK_DRY_RUN=true`, it prints the Text.lk payload without sending. With `SMS_PROVIDER=textlk` and `TEXTLK_DRY_RUN=false`, it sends to Text.lk.
+
+To send a test SMS from the app: sign in as Admin, open Settings, enable SMS, choose Mock or Text.lk, enter `0758396064` or `94758396064`, and click Test SMS. Check Notifications for sent, dry-run, failed, or skipped status.
 
 ## Invoice SMS
 
@@ -213,3 +238,5 @@ Included: an offline-generated initial Prisma SQL migration at `apps/api/prisma/
 Also included: additive migration `apps/api/prisma/migrations/20260706143000_business_sms_desired_items/migration.sql` for settings, SMS logs, and desired item requests.
 
 Completed in this run: local PostgreSQL migration and seed verification with Docker Compose.
+
+See [`docs/PHASE1_AUDIT_REPORT.md`](docs/PHASE1_AUDIT_REPORT.md) for requirements coverage, remaining Phase 1 gaps, deferred Phase 2 scope, risks, and the manual acceptance checklist.

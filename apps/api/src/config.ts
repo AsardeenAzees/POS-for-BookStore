@@ -18,18 +18,13 @@ const configSchema = z.object({
   SMS_PROVIDER: z.enum(["mock", "textlk"]).default("mock"),
   SMS_AUTO_SEND_INVOICE: envBoolean(false),
   SMS_AUTO_SEND_STOCK_ALERT: envBoolean(false),
-  TEXTLK_API_BASE_URL: z.string().url().default("https://app.text.lk/api/v3"),
+  TEXTLK_API_BASE_URL: z.string().url().default("https://app.text.lk/api/http"),
   TEXTLK_API_TOKEN: z.string().default(""),
   TEXTLK_SENDER_ID: z.string().default(""),
   TEXTLK_DRY_RUN: envBoolean(true),
-  TEXTLK_SEND_ENDPOINT: z.string().default("sms/send"),
+  TEXTLK_SEND_ENDPOINT: z.string().default("/sms/send"),
   TEXTLK_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
-  TEXTLK_RECIPIENT_FIELD: z.string().default("recipient"),
-  TEXTLK_MESSAGE_FIELD: z.string().default("message"),
-  TEXTLK_SENDER_FIELD: z.string().default("sender_id"),
-  TEXTLK_TYPE_FIELD: z.string().default("type"),
-  TEXTLK_MESSAGE_TYPE: z.string().default("plain"),
-  TEXTLK_TOKEN_MODE: z.enum(["bearer", "query", "body", "none"]).default("bearer")
+  TEXTLK_MESSAGE_TYPE: z.string().default("plain")
 });
 
 export const config = configSchema.parse(process.env);

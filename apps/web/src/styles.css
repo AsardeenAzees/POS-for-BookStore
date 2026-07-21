@@ -75,6 +75,8 @@ main { min-width: 0; }
 .metrics strong { font-size: 1.4rem; }
 
 .dashboard-grid, .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
+.settings-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.settings-fieldset:disabled { opacity: .85; }
 
 table { width: 100%; border-collapse: collapse; min-width: 640px; }
 th, td { padding: 0.7rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -107,7 +109,7 @@ th { color: var(--muted); font-size: 0.85rem; }
 .status { display: inline-flex; padding: 0.2rem 0.45rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
 .status.sent, .status.notified { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
 .status.failed, .status.cancelled, .status.spam { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
-.status.pending, .status.pending_review, .status.open { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); }
+.status.pending, .status.pending_review, .status.open, .status.dry_run { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); }
 
 .toast-stack { position: fixed; right: 1rem; bottom: 1rem; display: grid; gap: 0.5rem; z-index: 20; width: min(380px, calc(100vw - 2rem)); }
 .toast { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 0.85rem 1rem; box-shadow: 0 10px 30px rgba(0,0,0,0.18); }

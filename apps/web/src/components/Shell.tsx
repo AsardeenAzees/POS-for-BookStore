@@ -4,14 +4,14 @@ import { getSession, setSession } from "../lib/api";
 import { useEffect, useState } from "react";
 
 const nav = [
-  ["/", "Dashboard", LayoutDashboard],
-  ["/pos", "POS", ReceiptText],
-  ["/inventory", "Inventory", Boxes],
-  ["/customers", "Customers", Users],
-  ["/desired-items", "Requests", ClipboardList],
-  ["/reports", "Reports", BarChart3],
-  ["/notifications", "Notifications", Bell],
-  ["/settings", "Settings", Settings]
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: ["ADMIN", "MANAGER"] },
+  { to: "/pos", label: "POS", icon: ReceiptText, roles: ["ADMIN", "MANAGER", "CASHIER"] },
+  { to: "/inventory", label: "Inventory", icon: Boxes, roles: ["ADMIN", "MANAGER", "INVENTORY_STAFF"] },
+  { to: "/customers", label: "Customers", icon: Users, roles: ["ADMIN", "MANAGER", "CASHIER"] },
+  { to: "/desired-items", label: "Requests", icon: ClipboardList, roles: ["ADMIN", "MANAGER", "CASHIER", "INVENTORY_STAFF"] },
+  { to: "/reports", label: "Reports", icon: BarChart3, roles: ["ADMIN", "MANAGER"] },
+  { to: "/notifications", label: "Notifications", icon: Bell, roles: ["ADMIN", "MANAGER"] },
+  { to: "/settings", label: "Settings", icon: Settings, roles: ["ADMIN", "MANAGER"] }
 ] as const;
 
 export function Shell() {
@@ -29,7 +29,7 @@ export function Shell() {
       <aside className="sidebar">
         <div className="brand">Cloud POS</div>
         <nav>
-          {nav.map(([to, label, Icon]) => (
+          {nav.filter((item) => item.roles.some((role) => role === session?.user.role)).map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} className={({ isActive }) => isActive ? "active" : ""}>
               <Icon size={18} /> <span>{label}</span>
             </NavLink>

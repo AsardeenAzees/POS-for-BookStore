@@ -10,21 +10,24 @@ export function Receipt() {
   const { id } = useParams();
   const toast = useToast();
   const [data, setData] = useState<{ sale: Sale; settings: BusinessSettings } | null>(null);
+  const [error, setError] = useState("");
   const [mode, setMode] = useState<"thermal" | "a4">("thermal");
   const isAdmin = getSession()?.user.role === "ADMIN";
 
-  useEffect(() => { if (id) void api<{ sale: Sale; settings: BusinessSettings }>(`/api/sales/${id}/receipt`).then(setData); }, [id]);
+  useEffect(() => { if (id) void api<{ sale: Sale; settings: BusinessSettings }>(`/api/sales/${id}/receipt`).then(setData).catch((err) => setError(err instanceof Error ? err.message : "Unable to load receipt")); }, [id]);
 
   async function sendSms() {
     if (!id) return;
     try {
-      await api(`/api/sales/${id}/send-invoice-sms`, { method: "POST" });
-      toast({ type: "success", message: "Invoice SMS queued/sent. Check SMS logs for delivery status." });
+      const result = await api<{ status: string; smsStatus?: string; provider: string }>(`/api/sales/${id}/send-invoice-sms`, { method: "POST" });
+      const smsStatus = result.smsStatus ?? result.status.toLowerCase();
+      toast({ type: "success", message: smsStatus === "dry_run" ? "Invoice SMS dry-run recorded. No real SMS was sent." : "Invoice SMS sent. Check Notifications for gateway details." });
     } catch (error) {
       toast({ type: "error", message: error instanceof Error ? error.message : "SMS failed" });
     }
   }
 
+  if (error) return <section className="page"><div className="alert">{error}</div><Link className="button-link" to="/pos">Back to POS</Link></section>;
   if (!data?.sale) return <section className="page"><div className="empty-state">Loading receipt...</div></section>;
   const { sale, settings } = data;
   const paid = sale.payments.reduce((sum, payment) => sum + Number(payment.amount), 0);

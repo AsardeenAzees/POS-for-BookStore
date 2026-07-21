@@ -1,8 +1,9 @@
-import { StockMovementType } from "@prisma/client";
+import { Prisma, StockMovementType } from "@prisma/client";
 import { prisma } from "../db.js";
 import { createSmsNotification } from "./notifications.js";
 import { findAndNotifyDesiredItemMatches } from "./desiredItems.js";
 import { getBusinessSettings } from "./settings.js";
+import { HttpError } from "../middleware/errors.js";
 
 export async function changeStock(input: {
   branchId: string;
@@ -14,18 +15,19 @@ export async function changeStock(input: {
   reference?: string;
 }) {
   if (!input.reason?.trim()) throw new Error("Stock movement reason is required");
-  if (!Number.isInteger(input.quantity) || input.quantity <= 0) throw new Error("Quantity must be positive");
+  if (!Number.isInteger(input.quantity) || input.quantity < 0 || (input.type !== "ADJUSTMENT" && input.quantity === 0)) throw new HttpError(400, "Quantity must be positive");
 
-  return prisma.$transaction(async (tx) => {
+  const result = await runSerializable(() => prisma.$transaction(async (tx) => {
     const existing = await tx.inventoryStock.upsert({
       where: { branchId_productId: { branchId: input.branchId, productId: input.productId } },
       create: { branchId: input.branchId, productId: input.productId, quantity: 0 },
       update: {}
     });
 
-    const signed = input.type === "STOCK_IN" || input.type === "RETURN" ? input.quantity : -input.quantity;
-    const afterQty = existing.quantity + signed;
-    if (afterQty < 0) throw new Error("Insufficient stock");
+    const afterQty = input.type === "ADJUSTMENT"
+      ? input.quantity
+      : existing.quantity + (input.type === "STOCK_IN" || input.type === "RETURN" ? input.quantity : -input.quantity);
+    if (afterQty < 0) throw new HttpError(400, "Insufficient stock");
 
     const updated = await tx.inventoryStock.update({
       where: { id: existing.id },
@@ -38,7 +40,7 @@ export async function changeStock(input: {
         productId: input.productId,
         userId: input.userId,
         type: input.type,
-        quantity: input.quantity,
+        quantity: input.type === "ADJUSTMENT" ? Math.abs(afterQty - existing.quantity) : input.quantity,
         beforeQty: existing.quantity,
         afterQty,
         reason: input.reason,
@@ -46,10 +48,13 @@ export async function changeStock(input: {
       }
     });
 
-    return updated;
-  }).then(async (stock) => {
+    return { stock: updated, increased: afterQty > existing.quantity };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }));
+
+  const { stock, increased } = result;
+  try {
     const product = await prisma.product.findUnique({ where: { id: input.productId } });
-    if ((input.type === "STOCK_IN" || input.type === "ADJUSTMENT") && stock.quantity > 0 && product) {
+    if (increased && stock.quantity > 0 && product) {
       await findAndNotifyDesiredItemMatches({ product, branchId: input.branchId, userId: input.userId });
     }
 
@@ -57,13 +62,27 @@ export async function changeStock(input: {
       const settings = await getBusinessSettings();
       await createSmsNotification({
         event: "low_stock_alert",
-        recipient: settings.phone ?? "+94770000000",
+        recipient: settings.phone ?? "",
         message: `Low stock: ${product?.name ?? input.productId} has ${stock.quantity} left.`,
         payload: { branchId: input.branchId, productId: input.productId, quantity: stock.quantity },
         createdById: input.userId,
         sendNow: settings.smsEnabled && settings.lowStockSmsAutoSend
       });
     }
-    return stock;
-  });
+  } catch (error) {
+    console.error("[post-stock-notification]", { productId: input.productId, branchId: input.branchId, error: error instanceof Error ? error.message : String(error) });
+  }
+  return stock;
+}
+
+async function runSerializable<T>(operation: () => Promise<T>) {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && attempt < 3) continue;
+      throw error;
+    }
+  }
+  throw new HttpError(409, "Stock changed concurrently; please retry");
 }

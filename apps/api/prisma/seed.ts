@@ -26,7 +26,13 @@ async function main() {
     create: { name: "Kandy City Branch", code: "KDY", address: "Dalada Veediya, Kandy", phone: "+94812200000" }
   });
 
-  const passwordHash = await bcrypt.hash("Password123!", 10);
+  const configuredSeedPassword = process.env.SEED_USER_PASSWORD?.trim();
+  if (!configuredSeedPassword && process.env.NODE_ENV === "production") {
+    throw new Error("SEED_USER_PASSWORD is required when seeding a production environment");
+  }
+  const seedPassword = configuredSeedPassword ?? "Password123!";
+  if (!configuredSeedPassword) console.warn("Using the documented local-development seed password. Never use it in a deployed environment.");
+  const passwordHash = await bcrypt.hash(seedPassword, 10);
   const users = [
     ["Admin User", "admin@bookshop.lk", RoleName.ADMIN, colombo.id],
     ["Manager User", "manager@bookshop.lk", RoleName.MANAGER, colombo.id],
