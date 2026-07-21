@@ -14,7 +14,7 @@ Production-oriented first version of a reusable cloud POS and inventory manageme
 ## What Is Included
 
 - Shared backend and shared database for POS now and future client website/mobile/automation clients
-- Roles: Admin, Manager, Cashier, Inventory Staff, Delivery Staff
+- Roles: Admin, Manager, Cashier, Inventory Staff, Delivery Staff, and a restricted read-only Demo Viewer
 - Branch-aware products and stock
 - Product/category management API with duplicate-check endpoint
 - Stock in, stock out, adjustment, sale movements, low-stock notification events
@@ -102,6 +102,9 @@ Password123!
 | Cashier | cashier@bookshop.lk |
 | Inventory Staff | inventory@bookshop.lk |
 | Delivery Staff | delivery@bookshop.lk |
+| Demo Viewer (read-only) | demo@bookshop.lk |
+
+The public demo login is `demo@bookshop.lk` / `DemoView@2026!`. It can view dashboards, inventory, invoices, and reports but cannot create, update, delete, check out sales, change stock, send notifications, or change settings. This intentionally public read-only credential is separate from all staff and administrator credentials.
 
 The seed command refuses to create fresh production users with the documented password. Set a strong `SEED_USER_PASSWORD` before running `db:seed` with `NODE_ENV=production`, and rotate or remove development accounts before any deployment.
 
@@ -140,6 +143,7 @@ TEXTLK_TIMEOUT_MS=10000
 TEXTLK_TOKEN_MODE="body"
 TEXTLK_MESSAGE_TYPE="plain"
 SEED_USER_PASSWORD=""
+DEMO_VIEWER_PASSWORD="DemoView@2026!"
 ```
 
 For the web app, copy `apps/web/.env.example` when you need to override its local API URL. Vercel must set `VITE_API_URL` to the Render service URL.
@@ -149,6 +153,8 @@ For the web app, copy `apps/web/.env.example` when you need to override its loca
 The monorepo is prepared for a free demonstration deployment using Vercel for the frontend, a Render Free Web Service for the API, Neon PostgreSQL, and GitHub source hosting.
 
 Follow the complete beginner-friendly instructions in [`docs/DEPLOYMENT_FREE_DEMO.md`](docs/DEPLOYMENT_FREE_DEMO.md). The guide includes the exact build/start commands, Neon migration and one-time seed process, environment variables, CORS setup, troubleshooting, security checklist, and live acceptance test.
+
+After deploying the new demo role migration, run the seed once more against Neon with `DEMO_VIEWER_PASSWORD="DemoView@2026!"` to create the read-only `demo@bookshop.lk` account. Existing staff users and passwords are preserved; the seed only enforces the restricted role and active status on the dedicated demo email.
 
 Free hosting is for demonstration only and must not be used for live business-critical POS data.
 

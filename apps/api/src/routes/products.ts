@@ -21,7 +21,7 @@ const productSchema = z.object({
   active: z.boolean().default(true)
 });
 
-const productReadRoles = requireRoles(RoleName.ADMIN, RoleName.MANAGER, RoleName.CASHIER, RoleName.INVENTORY_STAFF);
+const productReadRoles = requireRoles(RoleName.ADMIN, RoleName.MANAGER, RoleName.CASHIER, RoleName.INVENTORY_STAFF, RoleName.DEMO_VIEWER);
 
 productsRouter.get("/", requireAuth, productReadRoles, async (req, res) => {
   const q = String(req.query.q ?? "");

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Minus, Plus, Search, Trash2 } from "lucide-react";
-import { api, getSession } from "../lib/api";
+import { api, getSession, isDemoViewer } from "../lib/api";
 import type { Branch, Customer, Product, Sale } from "../lib/types";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../components/Toast";
@@ -21,6 +21,7 @@ export function POS() {
   const [discount, setDiscount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState(false);
+  const demoMode = isDemoViewer();
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + Number(item.product.sellingPrice) * item.quantity - item.discount, 0), [cart]);
   const total = Math.max(0, subtotal - discount);
 
@@ -81,7 +82,7 @@ export function POS() {
         <div className="search"><Search size={18} /><input autoFocus placeholder="Search by name, SKU, barcode, author" value={q} onChange={(event) => setQ(event.target.value)} /></div>
         <div className="product-list">{products.length ? products.map((product) => { const available = availableStock(product, branchId); return <button key={product.id} disabled={available < 1} onClick={() => add(product)}><strong>{product.name}</strong><span>{product.sku} · LKR {Number(product.sellingPrice).toLocaleString()} · {available} in stock</span></button>; }) : <div className="empty-state">No products found</div>}</div>
       </div>
-      <div className="panel cart">
+      {!demoMode ? <div className="panel cart">
         <h2>Cart</h2>
         {cart.length === 0 && <div className="empty-state">Scan or select a product to begin.</div>}
         {cart.map((item) => (
@@ -94,7 +95,7 @@ export function POS() {
         <label>Bill discount<input type="number" min="0" max={subtotal} value={discount} onChange={(event) => setDiscount(Math.max(0, Math.min(subtotal, Number(event.target.value) || 0)))} /></label>
         <div className="totals"><span>Subtotal LKR {subtotal.toLocaleString()}</span><strong>Total LKR {total.toLocaleString()}</strong></div>
         <div className="actions"><button disabled={!cart.length || checkingOut || !branchId} className="primary" onClick={() => void checkout("CASH")}>{checkingOut ? "Processing..." : "Cash"}</button><button disabled={!cart.length || checkingOut || !branchId} onClick={() => void checkout("DIGITAL")}>Digital</button></div>
-      </div>
+      </div> : <div className="panel cart demo-cart"><h2>Demo preview</h2><div className="demo-notice">Checkout and cart changes are disabled for the demo account. Browse live products and branch stock from the product panel.</div></div>}
     </section>
   );
 }

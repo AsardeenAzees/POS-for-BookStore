@@ -10,7 +10,7 @@ import { canSendInvoice, canSendStockAlert, createSmsNotification, notificationT
 export const notificationsRouter = Router();
 const smsActionLimiter = rateLimit({ windowMs: 60_000, limit: 20 });
 
-notificationsRouter.get("/", requireAuth, requireRoles(RoleName.ADMIN, RoleName.MANAGER), async (req, res) => {
+notificationsRouter.get("/", requireAuth, requireRoles(RoleName.ADMIN, RoleName.MANAGER, RoleName.DEMO_VIEWER), async (req, res) => {
   const branchId = branchScope(req.user!);
   const rows = await prisma.notification.findMany({
     where: branchId ? { OR: [{ sale: { branchId } }, { desiredItemRequest: { branchId } }, { createdBy: { branchId } }] } : undefined,

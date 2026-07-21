@@ -30,7 +30,7 @@ function RoleRoute({ roles, children }: { roles: string[]; children: ReactNode }
 
 function Home() {
   const role = getSession()?.user.role;
-  if (role === "ADMIN" || role === "MANAGER") return <Dashboard />;
+  if (role === "ADMIN" || role === "MANAGER" || role === "DEMO_VIEWER") return <Dashboard />;
   if (role === "CASHIER") return <Navigate to="/pos" replace />;
   if (role === "INVENTORY_STAFF") return <Navigate to="/inventory" replace />;
   return <section className="page"><div className="panel empty-state"><h1>Delivery workflow</h1><p>The delivery workspace is planned for Phase 2. No POS-side delivery actions are assigned to this role yet.</p></div></section>;
@@ -60,13 +60,13 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route element={<Protected />}>
             <Route index element={<Home />} />
-            <Route path="pos" element={<RoleRoute roles={["ADMIN", "MANAGER", "CASHIER"]}><POS /></RoleRoute>} />
-            <Route path="sales/:id/receipt" element={<RoleRoute roles={["ADMIN", "MANAGER", "CASHIER"]}><Receipt /></RoleRoute>} />
-            <Route path="inventory" element={<RoleRoute roles={["ADMIN", "MANAGER", "INVENTORY_STAFF"]}><Inventory /></RoleRoute>} />
-            <Route path="customers" element={<RoleRoute roles={["ADMIN", "MANAGER", "CASHIER"]}><Customers /></RoleRoute>} />
-            <Route path="desired-items" element={<RoleRoute roles={["ADMIN", "MANAGER", "CASHIER", "INVENTORY_STAFF"]}><DesiredItems /></RoleRoute>} />
-            <Route path="reports" element={<RoleRoute roles={["ADMIN", "MANAGER"]}><Reports /></RoleRoute>} />
-            <Route path="notifications" element={<RoleRoute roles={["ADMIN", "MANAGER"]}><Notifications /></RoleRoute>} />
+            <Route path="pos" element={<RoleRoute roles={["ADMIN", "MANAGER", "CASHIER", "DEMO_VIEWER"]}><POS /></RoleRoute>} />
+            <Route path="sales/:id/receipt" element={<RoleRoute roles={["ADMIN", "MANAGER", "CASHIER", "DEMO_VIEWER"]}><Receipt /></RoleRoute>} />
+            <Route path="inventory" element={<RoleRoute roles={["ADMIN", "MANAGER", "INVENTORY_STAFF", "DEMO_VIEWER"]}><Inventory /></RoleRoute>} />
+            <Route path="customers" element={<RoleRoute roles={["ADMIN", "MANAGER", "CASHIER", "DEMO_VIEWER"]}><Customers /></RoleRoute>} />
+            <Route path="desired-items" element={<RoleRoute roles={["ADMIN", "MANAGER", "CASHIER", "INVENTORY_STAFF", "DEMO_VIEWER"]}><DesiredItems /></RoleRoute>} />
+            <Route path="reports" element={<RoleRoute roles={["ADMIN", "MANAGER", "DEMO_VIEWER"]}><Reports /></RoleRoute>} />
+            <Route path="notifications" element={<RoleRoute roles={["ADMIN", "MANAGER", "DEMO_VIEWER"]}><Notifications /></RoleRoute>} />
             <Route path="settings" element={<RoleRoute roles={["ADMIN", "MANAGER"]}><Settings /></RoleRoute>} />
           </Route>
         </Routes>

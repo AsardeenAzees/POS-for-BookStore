@@ -27,3 +27,5 @@ services:
         value: "true"
       - key: SEED_USER_PASSWORD
         sync: false
+      - key: DEMO_VIEWER_PASSWORD
+        sync: false

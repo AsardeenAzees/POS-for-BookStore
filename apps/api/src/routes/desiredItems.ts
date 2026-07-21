@@ -20,7 +20,7 @@ const desiredItemSchema = z.object({
   notifyByWhatsapp: z.boolean().default(false)
 });
 
-const desiredReadRoles = requireRoles(RoleName.ADMIN, RoleName.MANAGER, RoleName.CASHIER, RoleName.INVENTORY_STAFF);
+const desiredReadRoles = requireRoles(RoleName.ADMIN, RoleName.MANAGER, RoleName.CASHIER, RoleName.INVENTORY_STAFF, RoleName.DEMO_VIEWER);
 
 desiredItemsRouter.get("/", requireAuth, desiredReadRoles, async (req, res) => {
   const status = req.query.status ? String(req.query.status) as DesiredItemStatus : undefined;

@@ -29,7 +29,7 @@ const saleSchema = z.object({
   });
 });
 
-const salesRoles = requireRoles(RoleName.ADMIN, RoleName.MANAGER, RoleName.CASHIER);
+const salesRoles = requireRoles(RoleName.ADMIN, RoleName.MANAGER, RoleName.CASHIER, RoleName.DEMO_VIEWER);
 
 salesRouter.get("/", requireAuth, salesRoles, async (req, res) => {
   const branchId = branchScope(req.user!);

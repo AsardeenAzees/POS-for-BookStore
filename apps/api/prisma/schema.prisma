@@ -13,6 +13,7 @@ enum RoleName {
   CASHIER
   INVENTORY_STAFF
   DELIVERY_STAFF
+  DEMO_VIEWER
 }
 
 enum StockMovementType {

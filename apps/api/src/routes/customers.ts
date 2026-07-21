@@ -7,7 +7,7 @@ import { normalizeSriLankanPhone } from "../services/phone.js";
 
 export const customersRouter = Router();
 
-customersRouter.use(requireAuth, requireRoles(RoleName.ADMIN, RoleName.MANAGER, RoleName.CASHIER));
+customersRouter.use(requireAuth, requireRoles(RoleName.ADMIN, RoleName.MANAGER, RoleName.CASHIER, RoleName.DEMO_VIEWER));
 
 const customerSchema = z.object({
   name: z.string().min(2),

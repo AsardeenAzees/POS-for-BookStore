@@ -73,7 +73,8 @@ The repository contains [`render.yaml`](../render.yaml). The easiest setup is a 
 6. Enter the requested secret values:
    - `DATABASE_URL`: Neon **pooled** connection URL.
    - `CORS_ORIGIN`: temporarily use `http://localhost:5173`, or the expected Vercel production URL if already known.
-   - `SEED_USER_PASSWORD`: a strong demo password used only when you manually seed.
+   - `SEED_USER_PASSWORD`: a strong staff seed password used only when you manually seed.
+   - `DEMO_VIEWER_PASSWORD`: `DemoView@2026!` for the intentionally public, read-only visitor account (seed only).
 7. Render generates `JWT_SECRET`; do not replace it with a short or predictable value.
 
 The committed Render settings are:
@@ -119,16 +120,17 @@ For future schema changes, commit a reviewed migration locally and rerun `db:dep
 
 ## Step 5: Seed Production Demo Data Once
 
-Use the Neon direct URL again and choose a strong password for the five demo users. Do not use `Password123!` on a deployed database.
+Use the Neon direct URL again and choose a strong private password for the five staff users. Do not use `Password123!` on a deployed database. Set the separate read-only visitor password to the credential displayed by the login page.
 
 PowerShell:
 
 ```powershell
 $env:DATABASE_URL = Read-Host "Paste the Neon direct connection URL"
-$env:SEED_USER_PASSWORD = Read-Host "Choose a strong demo-user password"
+$env:SEED_USER_PASSWORD = Read-Host "Choose a strong staff seed password"
+$env:DEMO_VIEWER_PASSWORD = "DemoView@2026!"
 $env:NODE_ENV = "production"
 npm run db:seed --workspace @pos/api
-Remove-Item Env:DATABASE_URL, Env:SEED_USER_PASSWORD, Env:NODE_ENV
+Remove-Item Env:DATABASE_URL, Env:SEED_USER_PASSWORD, Env:DEMO_VIEWER_PASSWORD, Env:NODE_ENV
 ```
 
 Bash/zsh:
@@ -136,14 +138,25 @@ Bash/zsh:
 ```bash
 read -s -p "Neon direct connection URL: " DATABASE_URL
 echo
-read -s -p "Strong demo-user password: " SEED_USER_PASSWORD
+read -s -p "Strong staff seed password: " SEED_USER_PASSWORD
 echo
-export DATABASE_URL SEED_USER_PASSWORD NODE_ENV=production
+DEMO_VIEWER_PASSWORD='DemoView@2026!'
+export DATABASE_URL SEED_USER_PASSWORD DEMO_VIEWER_PASSWORD NODE_ENV=production
 npm run db:seed --workspace @pos/api
-unset DATABASE_URL SEED_USER_PASSWORD NODE_ENV
+unset DATABASE_URL SEED_USER_PASSWORD DEMO_VIEWER_PASSWORD NODE_ENV
 ```
 
-The seed uses unique-key upserts and no-op updates for existing demo users, products, and stock. Rerunning it creates missing seed records without duplicating or resetting existing stock, passwords, or role assignments. It should still be treated as a controlled administrative command, not a startup task.
+The seed uses unique-key upserts and no-op updates for existing staff users, products, and stock. Rerunning it creates the missing `DEMO_VIEWER` role and `demo@bookshop.lk` user without duplicating records or resetting passwords or stock. For safety, it enforces the restricted role and active status on the dedicated demo email while leaving all staff role assignments unchanged. It should still be treated as a controlled administrative command, not a startup task.
+
+The visitor credential is:
+
+```text
+Email: demo@bookshop.lk
+Password: DemoView@2026!
+Access: read-only
+```
+
+This account can view dashboards, inventory, invoices, and reports but cannot modify data. It is not an administrator account. Never publish real Admin, Manager, Cashier, Inventory Staff, or Delivery Staff credentials.
 
 ## Step 6: Verify the Render API
 
@@ -211,18 +224,21 @@ Do not use `*` for the demo. Random Vercel preview URLs will not be allowed unle
 
 ## Step 10: Test the Live Demo
 
-Use the Vercel production URL and the password chosen during Step 5.
+Use the Vercel production URL. Verify the visitor experience with `demo@bookshop.lk` / `DemoView@2026!`, and use the private password chosen during Step 5 only for authorized staff-role checks.
 
-1. Sign in as each required seeded role.
-2. Confirm Cashier cannot access Settings or Reports.
-3. Open POS, select an in-stock product, and complete a small cash sale.
-4. Confirm the receipt opens and browser print preview works.
-5. Confirm branch stock decreased and a stock movement was recorded.
-6. Add or adjust inventory with a reason.
-7. Open Dashboard and Reports and verify the new sale totals.
-8. Open Settings and confirm `mock` is the SMS provider.
-9. Run a test SMS or invoice SMS and verify a notification log is created without sending a real message.
-10. Reopen `/reports` or a receipt URL directly to confirm the Vercel SPA rewrite works.
+1. Sign in as the Demo Viewer and confirm the read-only badge is visible.
+2. Confirm dashboards, inventory, invoices, and reports can be viewed.
+3. Confirm every write action is unavailable and a direct write API request returns HTTP 403.
+4. Sign in as each required seeded staff role.
+5. Confirm Cashier cannot access Settings or Reports.
+6. Open POS, select an in-stock product, and complete a small cash sale.
+7. Confirm the receipt opens and browser print preview works.
+8. Confirm branch stock decreased and a stock movement was recorded.
+9. Add or adjust inventory with a reason.
+10. Open Dashboard and Reports and verify the new sale totals.
+11. Open Settings and confirm `mock` is the SMS provider.
+12. Run a test SMS or invoice SMS and verify a notification log is created without sending a real message.
+13. Reopen `/reports` or a receipt URL directly to confirm the Vercel SPA rewrite works.
 
 Delete obviously artificial sale/customer data before presenting the final demo if it would confuse the audience.
 
@@ -240,7 +256,8 @@ Delete obviously artificial sale/customer data before presenting the final demo 
 | `SMS_AUTO_SEND_INVOICE`     | `false`                                             | Yes             |
 | `SMS_AUTO_SEND_STOCK_ALERT` | `false`                                             | Yes             |
 | `TEXTLK_DRY_RUN`            | `true`                                              | Yes             |
-| `SEED_USER_PASSWORD`        | Strong demo password; only used by manual seed      | Seed only       |
+| `SEED_USER_PASSWORD`        | Strong private staff password; manual seed only     | Seed only       |
+| `DEMO_VIEWER_PASSWORD`      | `DemoView@2026!`; read-only visitor, seed only       | Seed only       |
 | `PORT`                      | Supplied automatically by Render                    | No manual value |
 | `DIRECT_URL`                | Reserved; not consumed by the current Prisma schema | No              |
 | `TEXTLK_API_TOKEN`          | Leave unset for mock demo                           | No              |
@@ -293,7 +310,7 @@ Render Free web services sleep after inactivity and can take roughly a minute to
 
 ### Seed reports duplicates or is rerun
 
-The current seed is idempotent for its stable unique keys. Rerun only after migrations succeed and always provide `SEED_USER_PASSWORD`. If manually created data conflicts with a seed SKU, barcode, phone, or email, inspect the conflict instead of deleting production-like data or resetting the database.
+The current seed is idempotent for its stable unique keys. Rerun only after migrations succeed and provide both `SEED_USER_PASSWORD` and `DEMO_VIEWER_PASSWORD` when `NODE_ENV=production`. If manually created data conflicts with a seed SKU, barcode, phone, or email, inspect the conflict instead of deleting production-like data or resetting the database.
 
 ### Vercel returns 404 on a nested route
 

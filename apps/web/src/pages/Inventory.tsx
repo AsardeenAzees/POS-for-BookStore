@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../lib/api";
+import { api, isDemoViewer } from "../lib/api";
 import type { Branch, Category, Product, Stock } from "../lib/types";
 import { downloadCsv } from "../lib/api";
 import { useToast } from "../components/Toast";
@@ -17,6 +17,7 @@ export function Inventory() {
   const [duplicates, setDuplicates] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const demoMode = isDemoViewer();
 
   async function load() {
     try {
@@ -65,7 +66,8 @@ export function Inventory() {
   return (
     <section className="page">
       <div className="page-head"><h1>Inventory</h1><div className="button-row"><button onClick={() => downloadCsv("/api/reports/export/branch-stock", "branch-stock.csv")}>Export stock</button><button onClick={() => window.print()}>Print</button></div></div>
-      <div className="panel form-grid">
+      {demoMode && <div className="demo-notice">Demo account: product creation and stock changes are disabled.</div>}
+      {!demoMode && <div className="panel form-grid">
         <input placeholder="Product name" value={productForm.name} onBlur={checkDuplicates} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} />
         <input placeholder="SKU" value={productForm.sku} onBlur={checkDuplicates} onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} />
         <input placeholder="Barcode" value={productForm.barcode} onBlur={checkDuplicates} onChange={(e) => setProductForm({ ...productForm, barcode: e.target.value })} />
@@ -77,15 +79,15 @@ export function Inventory() {
         <input type="number" placeholder="Cost price" value={productForm.costPrice} onChange={(e) => setProductForm({ ...productForm, costPrice: Number(e.target.value) })} />
         <button className="primary" onClick={addProduct}>Add product</button>
         {duplicates.length > 0 && <div className="warning">Possible duplicate: {duplicates.map((item) => item.name).join(", ")}</div>}
-      </div>
-      <div className="panel form-grid">
+      </div>}
+      {!demoMode && <div className="panel form-grid">
         <select value={form.branchId} onChange={(e) => setForm({ ...form, branchId: e.target.value })}>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
         <select value={form.productId} onChange={(e) => setForm({ ...form, productId: e.target.value })}>{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
         <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}><option>STOCK_IN</option><option>STOCK_OUT</option><option>ADJUSTMENT</option></select>
         <label>{form.type === "ADJUSTMENT" ? "New on-hand quantity" : "Quantity"}<input type="number" min={form.type === "ADJUSTMENT" ? 0 : 1} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} /></label>
         <input placeholder="Reason required" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
         <button className="primary" onClick={() => void submit()}>Record movement</button>
-      </div>
+      </div>}
       <div className="search"><input placeholder="Search stock by product, SKU, or branch" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
       <div className="panel"><table><thead><tr><th>Product</th><th>Branch</th><th>Qty</th><th>Low level</th></tr></thead><tbody>{stock.filter((row) => `${row.product.name} ${row.product.sku} ${row.branch.name}`.toLowerCase().includes(search.toLowerCase())).map((row) => <tr key={row.id}><td>{row.product.name}</td><td>{row.branch.name}</td><td>{row.quantity}</td><td>{row.lowStockLevel}</td></tr>)}</tbody></table></div>
       <div className="panel"><h2>Stock Movement History</h2><table><thead><tr><th>Date</th><th>Product</th><th>Branch</th><th>Type</th><th>Qty</th><th>Reason</th><th>Staff</th></tr></thead><tbody>{movements.map((row) => <tr key={row.id}><td>{new Date(row.createdAt).toLocaleString()}</td><td>{row.product.name}</td><td>{row.branch.name}</td><td>{row.type}</td><td>{row.quantity}</td><td>{row.reason}</td><td>{row.user?.name}</td></tr>)}</tbody></table></div>

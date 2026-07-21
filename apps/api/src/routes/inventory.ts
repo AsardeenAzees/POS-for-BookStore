@@ -8,7 +8,7 @@ import { changeStock } from "../services/inventory.js";
 
 export const inventoryRouter = Router();
 
-const inventoryRoles = requireRoles(RoleName.ADMIN, RoleName.MANAGER, RoleName.INVENTORY_STAFF);
+const inventoryRoles = requireRoles(RoleName.ADMIN, RoleName.MANAGER, RoleName.INVENTORY_STAFF, RoleName.DEMO_VIEWER);
 
 inventoryRouter.get("/stock", requireAuth, inventoryRoles, async (req, res, next) => {
   const requestedBranchId = req.query.branchId ? String(req.query.branchId) : undefined;

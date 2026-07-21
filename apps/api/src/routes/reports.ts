@@ -7,7 +7,7 @@ import { HttpError } from "../middleware/errors.js";
 
 export const reportsRouter = Router();
 
-reportsRouter.use(requireAuth, requireRoles(RoleName.ADMIN, RoleName.MANAGER));
+reportsRouter.use(requireAuth, requireRoles(RoleName.ADMIN, RoleName.MANAGER, RoleName.DEMO_VIEWER));
 
 reportsRouter.get("/daily-sales", requireAuth, async (req, res) => {
   const date = req.query.date ? new Date(String(req.query.date)) : new Date();

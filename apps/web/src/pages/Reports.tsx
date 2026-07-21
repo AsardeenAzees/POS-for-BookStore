@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { Printer } from "lucide-react";
 import { api, downloadCsv } from "../lib/api";
 import { useToast } from "../components/Toast";
@@ -38,12 +40,12 @@ export function Reports() {
 }
 
 type Row = Record<string, any>;
-type Column = { label: string; value: (row: Row) => string | number };
+type Column = { label: string; value: (row: Row) => ReactNode };
 
 function reportRows(tab: Tab, data: unknown): { rows: Row[]; columns: Column[] } {
   const value = data as any;
   if (tab === "daily-sales") return { rows: value?.sales ?? [], columns: [
-    { label: "Invoice", value: (row) => row.invoiceNumber }, { label: "Branch", value: (row) => row.branch?.name ?? "-" }, { label: "Cashier", value: (row) => row.user?.name ?? "-" }, { label: "Total", value: (row) => money(row.total) }, { label: "Date", value: (row) => new Date(row.createdAt).toLocaleString() }
+    { label: "Invoice", value: (row) => <Link to={`/sales/${row.id}/receipt`}>{row.invoiceNumber}</Link> }, { label: "Branch", value: (row) => row.branch?.name ?? "-" }, { label: "Cashier", value: (row) => row.user?.name ?? "-" }, { label: "Total", value: (row) => money(row.total) }, { label: "Date", value: (row) => new Date(row.createdAt).toLocaleString() }
   ] };
   if (tab === "product-sales") return { rows: Array.isArray(value) ? value : [], columns: [
     { label: "Product", value: (row) => row.product?.name ?? row.productId }, { label: "Quantity", value: (row) => row._sum?.quantity ?? 0 }, { label: "Sales", value: (row) => money(row._sum?.total ?? 0) }

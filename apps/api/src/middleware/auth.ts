@@ -11,6 +11,8 @@ export type AuthUser = {
   branchId: string | null;
 };
 
+export const DEMO_READ_ONLY_MESSAGE = "Demo account is read-only. This action is disabled.";
+
 declare global {
   namespace Express {
     interface Request {
@@ -23,6 +25,13 @@ export function signToken(user: AuthUser) {
   return jwt.sign(user, config.JWT_SECRET, { expiresIn: config.JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"] });
 }
 
+export function enforceDemoReadOnly(req: Request, res: Response, next: NextFunction) {
+  if (req.user?.role === RoleName.DEMO_VIEWER && !["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+    return res.status(403).json({ error: DEMO_READ_ONLY_MESSAGE });
+  }
+  next();
+}
+
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   const header = req.header("authorization");
   const token = header?.startsWith("Bearer ") ? header.slice(7) : null;
@@ -33,7 +42,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     const user = await prisma.user.findUnique({ where: { id: decoded.id }, include: { role: true } });
     if (!user || !user.active) return res.status(401).json({ error: "Invalid user" });
     req.user = { id: user.id, email: user.email, role: user.role.name, branchId: user.branchId };
-    next();
+    return enforceDemoReadOnly(req, res, next);
   } catch {
     res.status(401).json({ error: "Invalid token" });
   }
@@ -48,9 +57,9 @@ export function requireRoles(...roles: RoleName[]) {
 }
 
 export function canAccessBranch(user: AuthUser, branchId: string | null | undefined) {
-  return user.role === RoleName.ADMIN || Boolean(branchId && user.branchId === branchId);
+  return user.role === RoleName.ADMIN || user.role === RoleName.DEMO_VIEWER || Boolean(branchId && user.branchId === branchId);
 }
 
 export function branchScope(user: AuthUser) {
-  return user.role === RoleName.ADMIN ? undefined : user.branchId ?? "__unassigned__";
+  return user.role === RoleName.ADMIN || user.role === RoleName.DEMO_VIEWER ? undefined : user.branchId ?? "__unassigned__";
 }
