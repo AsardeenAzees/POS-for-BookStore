@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { getSession } from "../lib/api";
 import type { BusinessSettings, Sale } from "../lib/types";
 import { useToast } from "../components/Toast";
+import { PagePreloader } from "../components/Preloader";
 
 export function Receipt() {
   const { id } = useParams();
@@ -28,7 +29,7 @@ export function Receipt() {
   }
 
   if (error) return <section className="page"><div className="alert">{error}</div><Link className="button-link" to="/pos">Back to POS</Link></section>;
-  if (!data?.sale) return <section className="page"><div className="empty-state">Loading receipt...</div></section>;
+  if (!data?.sale) return <PagePreloader />;
   const { sale, settings } = data;
   const paid = sale.payments.reduce((sum, payment) => sum + Number(payment.amount), 0);
   const balance = paid - Number(sale.total);

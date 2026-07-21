@@ -2,13 +2,15 @@ import { useEffect, useState } from "react";
 import { api, downloadCsv } from "../lib/api";
 import type { Customer } from "../lib/types";
 import { useToast } from "../components/Toast";
+import { PagePreloader } from "../components/Preloader";
 
 export function Customers() {
   const toast = useToast();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: "", phone: "", whatsapp: "", address: "", notificationPreference: "INVOICE_ONLY" });
-  const load = () => api<Customer[]>("/api/customers").then(setCustomers);
+  const load = () => api<Customer[]>("/api/customers").then(setCustomers).finally(() => setLoading(false));
   useEffect(() => { void load(); }, []);
   async function submit() {
     try {
@@ -20,6 +22,7 @@ export function Customers() {
       toast({ type: "error", message: error instanceof Error ? error.message : "Unable to add customer" });
     }
   }
+  if (loading) return <PagePreloader />;
   return (
     <section className="page">
       <div className="page-head"><h1>Customers</h1><button onClick={() => downloadCsv("/api/reports/export/customers", "customers.csv")}>Export CSV</button></div>

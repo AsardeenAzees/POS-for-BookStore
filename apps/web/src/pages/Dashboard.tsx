@@ -1,17 +1,23 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import type { Sale, Stock } from "../lib/types";
+import { PagePreloader } from "../components/Preloader";
 
 export function Dashboard() {
   const [summary, setSummary] = useState<any>();
   const [daily, setDaily] = useState<{ total: number; count: number; sales: Sale[] }>();
   const [lowStock, setLowStock] = useState<Stock[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void api<any>("/api/reports/dashboard-summary").then(setSummary).catch(() => undefined);
-    void api<{ total: number; count: number; sales: Sale[] }>("/api/reports/daily-sales").then(setDaily).catch(() => undefined);
-    void api<Stock[]>("/api/reports/low-stock").then(setLowStock);
+    void Promise.allSettled([
+      api<any>("/api/reports/dashboard-summary").then(setSummary),
+      api<{ total: number; count: number; sales: Sale[] }>("/api/reports/daily-sales").then(setDaily),
+      api<Stock[]>("/api/reports/low-stock").then(setLowStock)
+    ]).finally(() => setLoading(false));
   }, []);
+
+  if (loading) return <PagePreloader />;
 
   return (
     <section className="page">

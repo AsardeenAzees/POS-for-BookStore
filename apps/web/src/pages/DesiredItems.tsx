@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, getSession } from "../lib/api";
 import type { Branch, DesiredItemRequest } from "../lib/types";
 import { useToast } from "../components/Toast";
+import { PagePreloader } from "../components/Preloader";
 
 export function DesiredItems() {
   const toast = useToast();
@@ -10,6 +11,7 @@ export function DesiredItems() {
   const canManage = role === "ADMIN" || role === "MANAGER";
   const [rows, setRows] = useState<DesiredItemRequest[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ customerName: "", phone: "", requestedItemName: "", branchId: "", notes: "", notifyBySms: true, notifyByWhatsapp: false });
   async function load() {
     try {
@@ -17,6 +19,8 @@ export function DesiredItems() {
       setRows(items); setBranches(branchRows); setForm((current) => ({ ...current, branchId: current.branchId || branchRows[0]?.id || "" }));
     } catch (error) {
       toast({ type: "error", message: error instanceof Error ? error.message : "Unable to load desired items" });
+    } finally {
+      setLoading(false);
     }
   }
   useEffect(() => { void load(); }, []);
@@ -47,6 +51,7 @@ export function DesiredItems() {
       toast({ type: "error", message: error instanceof Error ? error.message : "Status update failed" });
     }
   }
+  if (loading) return <PagePreloader />;
   return (
     <section className="page">
       <div className="page-head"><div><h1>Desired Item Requests</h1><span className="muted">Record unavailable items and notify customers when stock arrives.</span></div></div>

@@ -3,6 +3,7 @@ import { api } from "../lib/api";
 import type { Branch, Category, Product, Stock } from "../lib/types";
 import { downloadCsv } from "../lib/api";
 import { useToast } from "../components/Toast";
+import { PagePreloader } from "../components/Preloader";
 
 export function Inventory() {
   const toast = useToast();
@@ -59,10 +60,11 @@ export function Inventory() {
     }
   }
 
+  if (loading) return <PagePreloader />;
+
   return (
     <section className="page">
       <div className="page-head"><h1>Inventory</h1><div className="button-row"><button onClick={() => downloadCsv("/api/reports/export/branch-stock", "branch-stock.csv")}>Export stock</button><button onClick={() => window.print()}>Print</button></div></div>
-      {loading && <div className="empty-state">Loading inventory...</div>}
       <div className="panel form-grid">
         <input placeholder="Product name" value={productForm.name} onBlur={checkDuplicates} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} />
         <input placeholder="SKU" value={productForm.sku} onBlur={checkDuplicates} onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} />

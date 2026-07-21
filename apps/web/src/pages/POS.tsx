@@ -4,6 +4,7 @@ import { api, getSession } from "../lib/api";
 import type { Branch, Customer, Product, Sale } from "../lib/types";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../components/Toast";
+import { PagePreloader } from "../components/Preloader";
 
 type CartItem = { product: Product; quantity: number; discount: number };
 
@@ -68,7 +69,7 @@ export function POS() {
     }
   }
 
-  if (loading) return <section className="page"><div className="empty-state">Loading POS...</div></section>;
+  if (loading) return <PagePreloader />;
 
   return (
     <section className="page pos-grid">

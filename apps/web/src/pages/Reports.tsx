@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Printer } from "lucide-react";
 import { api, downloadCsv } from "../lib/api";
 import { useToast } from "../components/Toast";
+import { Preloader } from "../components/Preloader";
 
 const tabs = ["daily-sales", "product-sales", "low-stock", "branch-stock", "employee-sales"] as const;
 type Tab = typeof tabs[number];
@@ -30,7 +31,7 @@ export function Reports() {
     <section className="page">
       <div className="page-head"><div><h1>Reports</h1><span className="muted">Sales and stock information for your permitted branch scope.</span></div><div className="button-row"><button onClick={() => void exportCsv(`/api/reports/export/${tab}`, `${tab}.csv`)}>Export CSV</button><button onClick={() => window.print()}><Printer size={16} /> Print</button></div></div>
       <div className="tabs">{tabs.map((item) => <button className={tab === item ? "active" : ""} key={item} onClick={() => setTab(item)}>{item.replaceAll("-", " ")}</button>)}</div>
-      <div className="panel report-table">{loading ? <div className="empty-state">Loading report...</div> : report.rows.length === 0 ? <div className="empty-state">No records for this report.</div> : <table><thead><tr>{report.columns.map((column) => <th key={column.label}>{column.label}</th>)}</tr></thead><tbody>{report.rows.map((row, index) => <tr key={String(row.id ?? row.productId ?? row.userId ?? index)}>{report.columns.map((column) => <td key={column.label}>{column.value(row)}</td>)}</tr>)}</tbody></table>}</div>
+      <div className="panel report-table">{loading ? <Preloader compact /> : report.rows.length === 0 ? <div className="empty-state">No records for this report.</div> : <table><thead><tr>{report.columns.map((column) => <th key={column.label}>{column.label}</th>)}</tr></thead><tbody>{report.rows.map((row, index) => <tr key={String(row.id ?? row.productId ?? row.userId ?? index)}>{report.columns.map((column) => <td key={column.label}>{column.value(row)}</td>)}</tr>)}</tbody></table>}</div>
       <div className="tabs no-print"><button onClick={() => void exportCsv("/api/reports/export/product-list", "products.csv")}>Products CSV</button><button onClick={() => void exportCsv("/api/reports/export/customers", "customers.csv")}>Customers CSV</button><button onClick={() => void exportCsv("/api/reports/export/desired-item-requests", "desired-items.csv")}>Desired Items CSV</button><button onClick={() => void exportCsv("/api/reports/export/sms-logs", "sms-logs.csv")}>SMS Logs CSV</button></div>
     </section>
   );

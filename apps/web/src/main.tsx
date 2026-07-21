@@ -1,4 +1,4 @@
-import React, { type ReactNode } from "react";
+import React, { type ReactNode, useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Shell } from "./components/Shell";
@@ -14,7 +14,10 @@ import { Settings } from "./pages/Settings";
 import { DesiredItems } from "./pages/DesiredItems";
 import { Receipt } from "./pages/Receipt";
 import { ToastProvider } from "./components/Toast";
+import { Preloader } from "./components/Preloader";
 import "./styles.css";
+
+document.documentElement.classList.toggle("dark", localStorage.getItem("theme") === "dark");
 
 function Protected() {
   return getSession() ? <Shell /> : <Navigate to="/login" replace />;
@@ -33,8 +36,24 @@ function Home() {
   return <section className="page"><div className="panel empty-state"><h1>Delivery workflow</h1><p>The delivery workspace is planned for Phase 2. No POS-side delivery actions are assigned to this role yet.</p></div></section>;
 }
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
+function App() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const startedAt = performance.now();
+    const reveal = () => {
+      const remaining = Math.max(0, 450 - (performance.now() - startedAt));
+      window.setTimeout(() => setReady(true), remaining);
+    };
+
+    if (document.readyState === "complete") reveal();
+    else window.addEventListener("load", reveal, { once: true });
+    return () => window.removeEventListener("load", reveal);
+  }, []);
+
+  if (!ready) return <Preloader fullScreen />;
+
+  return (
     <ToastProvider>
       <BrowserRouter>
         <Routes>
@@ -53,5 +72,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         </Routes>
       </BrowserRouter>
     </ToastProvider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
   </React.StrictMode>
 );

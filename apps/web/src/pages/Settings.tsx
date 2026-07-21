@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, getSession } from "../lib/api";
 import type { BusinessSettings } from "../lib/types";
 import { useToast } from "../components/Toast";
+import { PagePreloader } from "../components/Preloader";
 
 export function Settings() {
   const toast = useToast();
@@ -42,7 +43,7 @@ export function Settings() {
     }
   }
   if (error) return <section className="page"><div className="alert">{error}</div></section>;
-  if (!settings) return <section className="page"><div className="empty-state">Loading settings...</div></section>;
+  if (!settings) return <PagePreloader />;
   return (
     <section className="page">
       <div className="page-head"><div><h1>Business Settings</h1><span className="muted">{isAdmin ? "Business profile and SMS configuration." : "Read-only settings. Only administrators can make changes."}</span></div>{isAdmin && <button className="primary" onClick={save}>Save settings</button>}</div>
