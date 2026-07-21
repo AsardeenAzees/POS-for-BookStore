@@ -36,8 +36,12 @@ export function Receipt() {
 
   return (
     <section className="page receipt-page">
+      {mode === "thermal" && <style media="print">{"@page { size: 80mm auto; margin: 0; }"}</style>}
       <div className="page-head no-print">
-        <div><h1>Invoice {sale.invoiceNumber}</h1><span className="muted">Choose a print layout or send the invoice SMS.</span></div>
+        <div>
+          <h1>Invoice {sale.invoiceNumber}</h1>
+          <span className="muted">{mode === "thermal" ? "80 mm receipt preview · print at 100% scale with no margins." : "A4 invoice preview."}</span>
+        </div>
         <div className="button-row">
           <button className={mode === "thermal" ? "active" : ""} onClick={() => setMode("thermal")}>Thermal</button>
           <button className={mode === "a4" ? "active" : ""} onClick={() => setMode("a4")}>A4</button>
@@ -60,10 +64,26 @@ export function Receipt() {
           <div><strong>Cashier</strong><span>{sale.user?.name ?? "Staff"}</span></div>
           <div><strong>Customer</strong><span>{sale.customer ? `${sale.customer.name} · ${sale.customer.phone}` : "Walk-in"}</span></div>
         </div>
-        <table className="invoice-items">
-          <thead><tr><th>Item</th><th>SKU/Barcode</th><th>Qty</th><th>Unit</th><th>Discount</th><th>Total</th></tr></thead>
-          <tbody>{sale.items.map((item) => <tr key={item.id}><td>{item.product.name}</td><td>{item.product.sku}<br />{item.product.barcode}</td><td>{item.quantity}</td><td>{money(item.unitPrice)}</td><td>{money(item.discount ?? 0)}</td><td>{money(item.total)}</td></tr>)}</tbody>
-        </table>
+        {mode === "thermal" ? (
+          <div className="thermal-items" aria-label="Purchased items">
+            <div className="thermal-items-head"><span>Item</span><span>Amount</span></div>
+            {sale.items.map((item) => (
+              <div className="thermal-item" key={item.id}>
+                <div className="thermal-item-name">
+                  <strong>{item.product.name}</strong>
+                  <span>{[item.product.sku, item.product.barcode].filter(Boolean).join(" · ")}</span>
+                  <span>{item.quantity} × {money(item.unitPrice)}{Number(item.discount ?? 0) > 0 ? ` · Discount ${money(item.discount ?? 0)}` : ""}</span>
+                </div>
+                <strong className="thermal-item-total">{money(item.total)}</strong>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <table className="invoice-items">
+            <thead><tr><th>Item</th><th>SKU/Barcode</th><th>Qty</th><th>Unit</th><th>Discount</th><th>Total</th></tr></thead>
+            <tbody>{sale.items.map((item) => <tr key={item.id}><td>{item.product.name}</td><td>{item.product.sku}<br />{item.product.barcode}</td><td>{item.quantity}</td><td>{money(item.unitPrice)}</td><td>{money(item.discount ?? 0)}</td><td>{money(item.total)}</td></tr>)}</tbody>
+          </table>
+        )}
         <div className="invoice-totals">
           <span>Subtotal</span><strong>{money(sale.subtotal)}</strong>
           <span>Discount</span><strong>{money(sale.discount)}</strong>
