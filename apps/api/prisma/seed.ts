@@ -48,9 +48,35 @@ async function main() {
       create: { name, email, passwordHash, roleId: roleId(role), branchId }
     });
   }
- });
+  const configuredDemoPassword = process.env.DEMO_VIEWER_PASSWORD?.trim();
+  if (!configuredDemoPassword && process.env.NODE_ENV === "production") {
+    throw new Error("DEMO_VIEWER_PASSWORD is required when seeding a production environment");
   }
-l Books" }, update: {}, create: { name: "School Books" } });
+  const demoPassword = configuredDemoPassword ?? "DemoView@2026!";
+  if (!configuredDemoPassword) {
+    console.warn("Using the documented local/demo viewer password. Set DEMO_VIEWER_PASSWORD when seeding a deployed database.");
+  }
+  const demoPasswordHash = await bcrypt.hash(demoPassword, 10);
+  await prisma.user.upsert({
+    where: { email: "demo@bookshop.lk" },
+    update: {
+      name: "Demo Viewer",
+      passwordHash: demoPasswordHash,
+      roleId: roleId(RoleName.DEMO_VIEWER),
+      branchId: null,
+      active: true
+    },
+    create: {
+      name: "Demo Viewer",
+      email: "demo@bookshop.lk",
+      passwordHash: demoPasswordHash,
+      roleId: roleId(RoleName.DEMO_VIEWER),
+      branchId: null,
+      active: true
+    }
+  });
+
+  const school = await prisma.category.upsert({ where: { name: "School Books" }, update: {}, create: { name: "School Books" } });
   const stationery = await prisma.category.upsert({ where: { name: "Stationery" }, update: {}, create: { name: "Stationery" } });
   const fiction = await prisma.category.upsert({ where: { name: "Fiction" }, update: {}, create: { name: "Fiction" } });
 

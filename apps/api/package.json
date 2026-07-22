@@ -7,7 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "prisma generate && tsc -p tsconfig.json",
     "start": "node dist/server.js",
-    "lint": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.seed.json",
     "test": "tsx --test src/services/phone.test.ts src/services/notifications.test.ts src/middleware/auth.test.ts src/services/sales.test.ts src/services/desiredItems.test.ts",
     "prisma:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
