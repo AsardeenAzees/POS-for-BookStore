@@ -118,6 +118,36 @@ The public demo login is `demo@bookshop.lk` / `DemoView@2026!`. It can view dash
 
 The seed command refuses to create fresh production users without explicit passwords. Set a strong `SEED_USER_PASSWORD` and `DEMO_VIEWER_PASSWORD` before running `db:seed` with `NODE_ENV=production`. Existing staff passwords are preserved by the idempotent seed while names, roles, branch assignments, and active status are repaired to match the sample definitions. The dedicated demo password is synchronized from `DEMO_VIEWER_PASSWORD` so the published read-only credential remains usable.
 
+Role behavior in the current Phase 1 implementation:
+
+- Admin has global branch access and can manage settings and SMS tests.
+- Managers are restricted to their assigned branch and can use operational dashboards, POS, inventory, reports, and notification workflows.
+- Cashiers are restricted to their assigned branch and can perform checkout, issue receipts, manage customers, and capture desired-item requests.
+- Inventory Staff are restricted to their assigned branch and can manage products and recorded stock movements.
+- Delivery Staff accounts are seeded for future compatibility, but their operational delivery workspace is intentionally deferred to Phase 2.
+- Demo Viewer has global read visibility while backend middleware blocks every data-changing request.
+
+### Apply Sample Users to Neon
+
+Run production migrations and the idempotent seed from a trusted local PowerShell terminal using the Neon direct connection URL:
+
+```powershell
+$env:DATABASE_URL = Read-Host "Paste Neon direct DATABASE_URL"
+$env:NODE_ENV = "production"
+$env:SEED_USER_PASSWORD = Read-Host "Password for newly created staff accounts"
+$env:DEMO_VIEWER_PASSWORD = "DemoView@2026!"
+
+npm.cmd run db:deploy --workspace @pos/api
+npm.cmd run db:seed --workspace @pos/api
+
+Remove-Item Env:DATABASE_URL
+Remove-Item Env:NODE_ENV
+Remove-Item Env:SEED_USER_PASSWORD
+Remove-Item Env:DEMO_VIEWER_PASSWORD
+```
+
+`SEED_USER_PASSWORD` is applied only when a staff sample account is first created. Rerunning the seed does not reset existing staff passwords. Never commit a Neon connection URL or production password.
+
 ## Useful Commands
 
 ```bash
