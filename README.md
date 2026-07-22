@@ -2,6 +2,12 @@
 
 Production-oriented first version of a reusable cloud POS and inventory management system for Sri Lankan retail businesses. The seed data starts with a bookshop, but the data model supports textiles, jewellery, stationery, grocery, and other branch-based businesses.
 
+## Project Owner
+
+**Asardeen Azees**
+
+Project owner and maintainer of Sri Lanka Cloud POS.
+
 ## Stack
 
 - Web: React + TypeScript + Vite
@@ -21,13 +27,13 @@ Production-oriented first version of a reusable cloud POS and inventory manageme
 - POS cart, product/SKU/barcode search, cash checkout, digital payment placeholder
 - Invoice number generation and digital receipt payloads
 - Customer records, notification preferences, purchase history API
-- SMS-ready notification module with provider abstraction and mock SMS provider
+- SMS notification module with provider abstraction, mock mode, and verified Text.lk API v3 delivery
 - Reports: daily sales, product sales, low stock, branch stock, employee sales
 - Audit logging for successful write actions
 - Responsive dashboard with light/dark mode
 - Professional thermal and A4 receipt views with browser printing
 - Desired item request workflow with stock-available SMS notifications
-- Text.lk-ready SMS provider adapter with dry-run mode, retry, timeout, and masked logging
+- Text.lk API v3 provider with Bearer authentication, dry-run mode, retry, timeout, and masked logging
 - Admin settings for business profile, SMS flags, provider selection, and test SMS
 - CSV exports for sales, branch stock, products, customers, desired item requests, and SMS logs
 
@@ -106,7 +112,7 @@ Password123!
 
 The public demo login is `demo@bookshop.lk` / `DemoView@2026!`. It can view dashboards, inventory, invoices, and reports but cannot create, update, delete, check out sales, change stock, send notifications, or change settings. This intentionally public read-only credential is separate from all staff and administrator credentials.
 
-The seed command refuses to create fresh production users with the documented password. Set a strong `SEED_USER_PASSWORD` before running `db:seed` with `NODE_ENV=production`, and rotate or remove development accounts before any deployment.
+The seed command refuses to create fresh production users without explicit passwords. Set a strong `SEED_USER_PASSWORD` and `DEMO_VIEWER_PASSWORD` before running `db:seed` with `NODE_ENV=production`. Existing staff passwords are preserved by the idempotent seed; the dedicated demo password is synchronized from `DEMO_VIEWER_PASSWORD` so the published read-only credential remains usable.
 
 ## Useful Commands
 
@@ -147,13 +153,20 @@ DEMO_VIEWER_PASSWORD="DemoView@2026!"
 
 For the web app, copy `apps/web/.env.example` when you need to override its local API URL. Vercel must set `VITE_API_URL` to the Render service URL.
 
+### Deployment Variable Ownership
+
+- **Render API:** `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CORS_ORIGIN`, and all `SMS_*` / `TEXTLK_*` runtime variables.
+- **Vercel web:** only `VITE_API_URL=https://sri-lanka-pos-api.onrender.com` is required for the current frontend.
+- `TEXTLK_API_TOKEN`, database URLs, JWT secrets, and seed passwords must never be added to Vercel or frontend source code.
+- After any token or database credential exposure, regenerate or rotate it before deployment.
+
 ## Free Demo Deployment
 
 The monorepo is prepared for a free demonstration deployment using Vercel for the frontend, a Render Free Web Service for the API, Neon PostgreSQL, and GitHub source hosting.
 
 Follow the complete beginner-friendly instructions in [`docs/DEPLOYMENT_FREE_DEMO.md`](docs/DEPLOYMENT_FREE_DEMO.md). The guide includes the exact build/start commands, Neon migration and one-time seed process, environment variables, CORS setup, troubleshooting, security checklist, and live acceptance test.
 
-After deploying the new demo role migration, run the seed once more against Neon with `DEMO_VIEWER_PASSWORD="DemoView@2026!"` to create the read-only `demo@bookshop.lk` account. Existing staff users and passwords are preserved; the seed only enforces the restricted role and active status on the dedicated demo email.
+After deploying the demo-role migration, run the seed once more against Neon with `DEMO_VIEWER_PASSWORD="DemoView@2026!"` to create or repair the read-only `demo@bookshop.lk` account. Existing staff users and passwords are preserved; the seed synchronizes only the dedicated demo password and enforces its restricted role and active status.
 
 Free hosting is for demonstration only and must not be used for live business-critical POS data.
 
