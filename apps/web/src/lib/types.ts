@@ -64,6 +64,9 @@ export type BusinessSettings = {
   lowStockThresholdDefault: number;
   smsSenderId?: string;
   textlkApiTokenStatus?: string;
+  textlkTokenConfigured?: boolean;
+  textlkDryRun?: boolean;
+  runtimeSmsProvider?: "mock" | "textlk";
 };
 
 export type NotificationLog = {

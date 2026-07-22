@@ -11,6 +11,10 @@ export type SmsResult = {
   providerMessageId?: string;
   errorMessage?: string;
   rawStatus?: string;
+  recipient?: string;
+  senderId?: string;
+  smsCount?: number;
+  cost?: string;
   safeResponse?: Record<string, unknown>;
 };
 
@@ -44,21 +48,33 @@ export class TextLkSmsProvider implements SmsProvider {
   name = "textlk" as const;
 
   async sendSms(input: { to: string; message: string; senderId?: string | null }): Promise<SmsResult> {
+    const normalizedRecipient = normalizeSriLankanPhone(input.to);
+    if (!normalizedRecipient) {
+      return {
+        provider: this.name,
+        status: "skipped",
+        errorMessage: "Invalid Sri Lankan mobile number",
+        rawStatus: "invalid_phone"
+      };
+    }
+    const senderId = process.env.TEXTLK_SENDER_ID?.trim() || input.senderId || config.TEXTLK_SENDER_ID || "TextLKDemo";
+
     if (config.TEXTLK_DRY_RUN) {
-      const senderId = input.senderId || config.TEXTLK_SENDER_ID;
       return {
         provider: this.name,
         status: "dry_run",
         providerMessageId: `dry-run-${Date.now()}`,
         rawStatus: "dry_run",
+        recipient: normalizedRecipient,
+        senderId,
         safeResponse: {
           endpoint: textLkSendUrl(),
           dryRun: true,
-          token: maskToken(config.TEXTLK_API_TOKEN),
+          authentication: config.TEXTLK_API_TOKEN ? "Bearer token configured" : "Bearer token not configured",
           payload: {
-            recipient: input.to,
+            recipient: normalizedRecipient,
             sender_id: senderId,
-            type: config.TEXTLK_MESSAGE_TYPE,
+            type: config.TEXTLK_MESSAGE_TYPE || "plain",
             message: input.message
           }
         }
@@ -70,15 +86,14 @@ export class TextLkSmsProvider implements SmsProvider {
     }
 
     const endpoint = textLkSendUrl();
-    const senderId = input.senderId || config.TEXTLK_SENDER_ID;
     if (!senderId) {
       return { provider: this.name, status: "failed", errorMessage: "Text.lk sender_id is required. Add an approved Sender ID in Settings.", rawStatus: "missing_sender_id" };
     }
 
     const body: Record<string, string> = {
-      recipient: input.to,
+      recipient: normalizedRecipient,
       sender_id: senderId,
-      type: config.TEXTLK_MESSAGE_TYPE,
+      type: config.TEXTLK_MESSAGE_TYPE || "plain",
       message: input.message
     };
 
@@ -95,22 +110,55 @@ export class TextLkSmsProvider implements SmsProvider {
       });
       const text = await response.text();
       const safeResponse = safeProviderResponse(response.status, text);
+      const responseData = textLkResponseData(safeResponse);
       if (!response.ok) {
-        return { provider: this.name, status: "failed", errorMessage: textLkErrorMessage(safeResponse, `Text.lk HTTP ${response.status}`), rawStatus: String(response.status), safeResponse };
+        return {
+          provider: this.name,
+          status: "failed",
+          errorMessage: textLkErrorMessage(text, `Text.lk HTTP ${response.status}`),
+          rawStatus: responseData.rawStatus ?? textLkStatus(safeResponse) ?? String(response.status),
+          recipient: responseData.recipient ?? normalizedRecipient,
+          senderId: responseData.senderId ?? senderId,
+          smsCount: responseData.smsCount,
+          cost: responseData.cost,
+          safeResponse
+        };
       }
       const gatewayStatus = textLkStatus(safeResponse);
       if (gatewayStatus !== "success") {
         return {
           provider: this.name,
           status: "failed",
-          errorMessage: textLkErrorMessage(safeResponse, "Text.lk rejected the SMS request"),
-          rawStatus: gatewayStatus ?? String(response.status),
+          errorMessage: textLkErrorMessage(text, "Text.lk rejected the SMS request"),
+          rawStatus: responseData.rawStatus ?? gatewayStatus ?? String(response.status),
+          recipient: responseData.recipient ?? normalizedRecipient,
+          senderId: responseData.senderId ?? senderId,
+          smsCount: responseData.smsCount,
+          cost: responseData.cost,
           safeResponse
         };
       }
-      return { provider: this.name, status: "sent", providerMessageId: extractProviderId(text), rawStatus: gatewayStatus, safeResponse };
+      return {
+        provider: this.name,
+        status: "sent",
+        providerMessageId: responseData.providerMessageId,
+        rawStatus: responseData.rawStatus ?? gatewayStatus,
+        recipient: responseData.recipient ?? normalizedRecipient,
+        senderId: responseData.senderId ?? senderId,
+        smsCount: responseData.smsCount,
+        cost: responseData.cost,
+        safeResponse
+      };
     } catch (error) {
-      return { provider: this.name, status: "failed", errorMessage: error instanceof Error ? error.message : "Text.lk send failed", rawStatus: "exception" };
+      const timedOut = error instanceof Error && error.name === "AbortError";
+      return {
+        provider: this.name,
+        status: "failed",
+        errorMessage: timedOut ? "Text.lk request timed out" : "Unable to reach Text.lk",
+        rawStatus: timedOut ? "timeout" : "exception",
+        recipient: normalizedRecipient,
+        senderId
+      };
     } finally {
       clearTimeout(timer);
     }
@@ -119,6 +167,13 @@ export class TextLkSmsProvider implements SmsProvider {
 
 export function buildSmsProvider(provider: string): SmsProvider {
   return provider === "textlk" ? new TextLkSmsProvider() : new MockSmsProvider();
+}
+
+function effectiveSmsProvider(settingsProvider: string) {
+  // An explicit deployment-level Text.lk setting must not be shadowed by an older
+  // database row that still contains the original "mock" default. Admin Settings
+  // can also opt into Text.lk while the environment remains on its safe mock default.
+  return config.SMS_PROVIDER === "textlk" || settingsProvider === "textlk" ? "textlk" : "mock";
 }
 
 export async function sendSmsDirect(input: { provider?: "mock" | "textlk"; to: string; message: string; senderId?: string | null }) {
@@ -146,10 +201,11 @@ export async function createSmsNotification(input: {
   createdById?: string;
   payload?: object;
   sendNow?: boolean;
+  provider?: "mock" | "textlk";
 }) {
   const normalized = normalizeSriLankanPhone(input.recipient);
   const settings = await getBusinessSettings();
-  const provider = buildSmsProvider(settings.smsProvider || config.SMS_PROVIDER);
+  const provider = buildSmsProvider(input.provider ?? effectiveSmsProvider(settings.smsProvider));
 
   const created = await prisma.notification.create({
     data: {
@@ -206,7 +262,9 @@ export async function sendNotification(notificationId: string) {
     });
   }
 
-  const provider = buildSmsProvider(settings.smsProvider || config.SMS_PROVIDER);
+  // Use the provider captured when the notification was created. This keeps test
+  // sends and retries deterministic even if settings change between both steps.
+  const provider = buildSmsProvider(notification.provider);
   let result: SmsResult = { provider: provider.name, status: "failed", errorMessage: "Not attempted" };
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     result = await provider.sendSms({ to: normalized, message: notification.message, senderId: settings.smsSenderId });
@@ -219,6 +277,7 @@ export async function sendNotification(notificationId: string) {
     data: {
       provider: result.provider,
       providerRef: result.providerMessageId,
+      recipient: result.recipient ?? normalized,
       status,
       attempts: { increment: 1 },
       lastAttemptAt: new Date(),
@@ -228,6 +287,10 @@ export async function sendNotification(notificationId: string) {
       providerResponse: JSON.parse(JSON.stringify({
         status: result.status,
         rawStatus: result.rawStatus,
+        recipient: result.recipient,
+        senderId: result.senderId,
+        smsCount: result.smsCount,
+        cost: result.cost,
         response: redactProviderValue(result.safeResponse ?? {})
       }))
     }
@@ -266,7 +329,7 @@ function safeProviderResponse(status: number, text: string) {
   try {
     return { httpStatus: status, body: redactProviderValue(JSON.parse(trimmed)) };
   } catch {
-    return { httpStatus: status, body: trimmed.replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [masked]") };
+    return { httpStatus: status, body: maskConfiguredToken(trimmed) };
   }
 }
 
@@ -287,25 +350,30 @@ function textLkStatus(safeResponse: Record<string, unknown>) {
   return undefined;
 }
 
-function textLkErrorMessage(safeResponse: Record<string, unknown>, fallback: string) {
-  const body = safeResponse.body;
-  if (body && typeof body === "object" && !Array.isArray(body)) {
-    const record = body as Record<string, unknown>;
+function textLkErrorMessage(responseText: string, fallback: string) {
+  try {
+    const record = JSON.parse(responseText.slice(0, 2000)) as Record<string, unknown>;
     const message = record.message ?? record.error;
-    if (typeof message === "string" && message.trim()) return message;
+    if (typeof message === "string" && message.trim()) {
+      return maskConfiguredToken(message).slice(0, 240);
+    }
+  } catch {
+    // Non-JSON provider errors use the safe HTTP fallback below.
   }
   return fallback;
 }
 
-function extractProviderId(text: string) {
-  try {
-    const parsed = JSON.parse(text) as Record<string, unknown>;
-    const data = parsed.data && typeof parsed.data === "object" ? parsed.data as Record<string, unknown> : {};
-    const id = parsed.id ?? parsed.message_id ?? parsed.reference ?? parsed.uid ?? data.id ?? data.message_id ?? data.reference ?? data.uid;
-    return typeof id === "string" || typeof id === "number" ? String(id) : undefined;
-  } catch {
-    return undefined;
-  }
+function textLkResponseData(safeResponse: Record<string, unknown>) {
+  const body = asRecord(safeResponse.body);
+  const data = asRecord(body?.data);
+  return {
+    providerMessageId: stringValue(data?.uid),
+    rawStatus: stringValue(data?.status),
+    recipient: stringValue(data?.to),
+    senderId: stringValue(data?.from),
+    smsCount: numberValue(data?.sms_count),
+    cost: stringValue(data?.cost)
+  };
 }
 
 function textLkSendUrl() {
@@ -314,9 +382,25 @@ function textLkSendUrl() {
   return `${base}/${endpoint}`;
 }
 
-function maskToken(token: string) {
-  if (!token) return "not_configured";
-  return "configured";
+function asRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" || typeof value === "number" ? String(value) : undefined;
+}
+
+function numberValue(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) return Number(value);
+  return undefined;
+}
+
+function maskConfiguredToken(value: string) {
+  const bearerMasked = value.replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [masked]");
+  return config.TEXTLK_API_TOKEN
+    ? bearerMasked.replaceAll(config.TEXTLK_API_TOKEN, "[masked]")
+    : bearerMasked;
 }
 
 export function notificationToSmsStatus(notification: Notification) {

@@ -21,6 +21,13 @@ export function setSession(session: Session | null) {
   else localStorage.removeItem("pos_session");
 }
 
+export class ApiError<T = unknown> extends Error {
+  constructor(message: string, public readonly status: number, public readonly data?: T) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const session = getSession();
   const method = (options.method ?? "GET").toUpperCase();
@@ -36,7 +43,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     }
   });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error ?? "Request failed");
+  if (!res.ok) throw new ApiError(body.error ?? "Request failed", res.status, body.data);
   return body.data as T;
 }
 

@@ -49,28 +49,48 @@ settingsRouter.put("/", requireAuth, requireRoles(RoleName.ADMIN), async (req, r
 function publicSettings(settings: Awaited<ReturnType<typeof getBusinessSettings>>) {
   return {
     ...settings,
-    smsSenderId: settings.smsSenderId ?? config.TEXTLK_SENDER_ID,
+    smsProvider: config.SMS_PROVIDER === "textlk" ? "textlk" : settings.smsProvider,
+    smsSenderId: process.env.TEXTLK_SENDER_ID?.trim() || settings.smsSenderId || config.TEXTLK_SENDER_ID,
     textlkApiTokenStatus: maskSecret(config.TEXTLK_API_TOKEN),
-    textlkTokenConfigured: Boolean(config.TEXTLK_API_TOKEN)
+    textlkTokenConfigured: Boolean(config.TEXTLK_API_TOKEN),
+    textlkDryRun: config.TEXTLK_DRY_RUN,
+    runtimeSmsProvider: config.SMS_PROVIDER
   };
 }
 
 settingsRouter.post("/test-sms", requireAuth, requireRoles(RoleName.ADMIN), async (req, res, next) => {
   try {
-    const input = z.object({ phone: z.string().min(7), message: z.string().min(3).default("POS test SMS") }).parse(req.body);
+    const input = z.object({
+      phone: z.string().min(7),
+      provider: z.enum(["mock", "textlk"]).optional(),
+      message: z.preprocess(
+        (value) => typeof value === "string" && value.trim() === "" ? undefined : value,
+        z.string().trim().min(3).default("POS SMS API test successful.")
+      )
+    }).parse(req.body);
     const notification = await createSmsNotification({
       event: "invoice_created",
       recipient: input.phone,
       message: input.message,
       createdById: req.user!.id,
-      sendNow: true
+      sendNow: true,
+      provider: input.provider
     });
     const sent = notification.status === "PENDING" ? await sendNotification(notification.id) : notification;
     const smsStatus = notificationToSmsStatus(sent);
+    const providerResponse = sent.providerResponse && typeof sent.providerResponse === "object" && !Array.isArray(sent.providerResponse)
+      ? sent.providerResponse as Record<string, unknown>
+      : undefined;
+    const result = {
+      ...sent,
+      smsStatus,
+      providerMessageId: sent.providerRef ?? undefined,
+      rawStatus: typeof providerResponse?.rawStatus === "string" ? providerResponse.rawStatus : undefined
+    };
     if (sent.status === "FAILED" || sent.status === "SKIPPED") {
-      return res.status(400).json({ data: sent, error: sent.errorMessage ?? sent.error ?? "SMS failed" });
+      return res.status(400).json({ data: result, error: sent.errorMessage ?? sent.error ?? "SMS failed" });
     }
-    res.json({ data: { ...sent, smsStatus } });
+    res.json({ data: result });
   } catch (error) {
     next(error);
   }

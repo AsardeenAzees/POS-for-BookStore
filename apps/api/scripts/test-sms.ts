@@ -4,7 +4,7 @@ import { normalizeSriLankanPhone } from "../src/services/phone.js";
 import { sendSmsDirect } from "../src/services/notifications.js";
 
 const phone = process.argv[2] ?? "0758396064";
-const message = process.argv.slice(3).join(" ").trim() || "Book Mart test SMS";
+const message = process.argv.slice(3).join(" ").trim() || "POS SMS API test successful.";
 const normalized = normalizeSriLankanPhone(phone);
 
 function safeJson(value: unknown) {
@@ -26,7 +26,7 @@ async function main() {
     provider: config.SMS_PROVIDER,
     to: normalized,
     message,
-    senderId: config.TEXTLK_SENDER_ID || "BOOKMART"
+    senderId: config.TEXTLK_SENDER_ID || "TextLKDemo"
   });
 
   console.log("SMS result:");

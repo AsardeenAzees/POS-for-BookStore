@@ -134,13 +134,12 @@ CORS_ORIGIN="http://localhost:5173"
 SMS_PROVIDER=mock
 SMS_AUTO_SEND_INVOICE=false
 SMS_AUTO_SEND_STOCK_ALERT=false
-TEXTLK_API_BASE_URL="https://app.text.lk/api/http"
+TEXTLK_API_BASE_URL="https://app.text.lk/api/v3"
 TEXTLK_API_TOKEN=""
-TEXTLK_SENDER_ID="BOOKMART"
+TEXTLK_SENDER_ID="TextLKDemo"
 TEXTLK_DRY_RUN=true
 TEXTLK_SEND_ENDPOINT="/sms/send"
 TEXTLK_TIMEOUT_MS=10000
-TEXTLK_TOKEN_MODE="body"
 TEXTLK_MESSAGE_TYPE="plain"
 SEED_USER_PASSWORD=""
 DEMO_VIEWER_PASSWORD="DemoView@2026!"
@@ -160,22 +159,20 @@ Free hosting is for demonstration only and must not be used for live business-cr
 
 ## Text.lk SMS Configuration
 
-> Real Text.lk sending is pending final API parameter confirmation. Mock/dry-run mode is safe for development.
-
 Real Text.lk secrets must only be placed in `apps/api/.env`. Do not commit that file and do not paste real API tokens into documentation, screenshots, or support tickets.
 
-Use `SMS_PROVIDER=mock` for local testing, or `SMS_PROVIDER=textlk` for Text.lk. Keep `TEXTLK_DRY_RUN=true` until the approved Sender ID is confirmed against your Text.lk account.
+Use `SMS_PROVIDER=mock` for safe local/demo operation. To use the verified Text.lk API v3 integration, set `SMS_PROVIDER=textlk` and change `TEXTLK_DRY_RUN` to `false` only when you intentionally want to send a real SMS.
 
 The Text.lk adapter uses the documented SMS endpoint and request body:
 
-- `TEXTLK_API_BASE_URL`, default `https://app.text.lk/api/http`
+- `TEXTLK_API_BASE_URL`, default `https://app.text.lk/api/v3`
 - `TEXTLK_SEND_ENDPOINT`, default `/sms/send`
 - `TEXTLK_MESSAGE_TYPE`
 
 The final URL is built as:
 
 ```text
-https://app.text.lk/api/http/sms/send
+https://app.text.lk/api/v3/sms/send
 ```
 
 It sends:
@@ -189,19 +186,23 @@ It sends:
 }
 ```
 
-Authorization is always sent as `Authorization: Bearer TEXTLK_API_TOKEN`.
+Authorization is sent only in the `Authorization: Bearer TEXTLK_API_TOKEN` header. The API token is never included in the JSON body.
 
-Text.lk requires an approved Sender ID. Add it in Admin Settings or set `TEXTLK_SENDER_ID` in `apps/api/.env`.
+`TextLKDemo` can be used for testing when the Text.lk account supports it. Replace it later with a Sender ID approved for your account. Add the Sender ID in Admin Settings or set `TEXTLK_SENDER_ID` in `apps/api/.env`.
 
 The UI shows only token status, never the full token. Provider responses are stored as safe/masked JSON.
 
 To test from the terminal:
 
 ```bash
-npm run test:sms --workspace @pos/api -- 0758396064
+npm run test:textlk-sms --workspace @pos/api -- 0758396064
 ```
 
-With the default `SMS_PROVIDER=mock`, the command does not call Text.lk and no phone will receive an SMS. It records a dry-run only. With `SMS_PROVIDER=textlk` and `TEXTLK_DRY_RUN=true`, it prints the Text.lk payload without sending. With `SMS_PROVIDER=textlk` and `TEXTLK_DRY_RUN=false`, it sends to Text.lk.
+The dedicated command uses the same Text.lk provider as the application. With `TEXTLK_DRY_RUN=true`, it prints a safe payload and does not send. With `TEXTLK_DRY_RUN=false`, it sends a real SMS. Its default message is `POS SMS API test successful.` You may append a custom message after the phone number.
+
+If the command prints `Text.lk mode: dry-run`, no API request is made. To intentionally test a real send, put a newly generated token in `apps/api/.env`, set `TEXTLK_DRY_RUN=false`, restart the API, and rerun the command. In Admin Settings select `Text.lk`; the test button now states whether it will run a dry-run or send a real SMS. The provider selected in the form is used for the test immediately, while **Save settings** persists it for invoice and desired-item SMS.
+
+If a token is ever exposed in Git, logs, screenshots, or chat, revoke it and generate a replacement in Text.lk immediately.
 
 To send a test SMS from the app: sign in as Admin, open Settings, enable SMS, choose Mock or Text.lk, enter `0758396064` or `94758396064`, and click Test SMS. Check Notifications for sent, dry-run, failed, or skipped status.
 

@@ -256,6 +256,11 @@ Delete obviously artificial sale/customer data before presenting the final demo 
 | `SMS_AUTO_SEND_INVOICE`     | `false`                                             | Yes             |
 | `SMS_AUTO_SEND_STOCK_ALERT` | `false`                                             | Yes             |
 | `TEXTLK_DRY_RUN`            | `true`                                              | Yes             |
+| `TEXTLK_API_BASE_URL`       | `https://app.text.lk/api/v3`                        | For Text.lk     |
+| `TEXTLK_SEND_ENDPOINT`      | `/sms/send`                                         | For Text.lk     |
+| `TEXTLK_SENDER_ID`          | `TextLKDemo`                                         | For Text.lk     |
+| `TEXTLK_MESSAGE_TYPE`       | `plain`                                              | For Text.lk     |
+| `TEXTLK_TIMEOUT_MS`         | `10000`                                              | For Text.lk     |
 | `SEED_USER_PASSWORD`        | Strong private staff password; manual seed only     | Seed only       |
 | `DEMO_VIEWER_PASSWORD`      | `DemoView@2026!`; read-only visitor, seed only       | Seed only       |
 | `PORT`                      | Supplied automatically by Render                    | No manual value |
@@ -267,6 +272,31 @@ Delete obviously artificial sale/customer data before presenting the final demo 
 | Variable       | Value                                      |
 | -------------- | ------------------------------------------ |
 | `VITE_API_URL` | `https://YOUR-RENDER-SERVICE.onrender.com` |
+
+### Optional live Text.lk configuration
+
+The free demo should remain on mock mode. For an intentional real SMS test, update only the Render API environment (never Vercel) with:
+
+```env
+SMS_PROVIDER=textlk
+TEXTLK_API_BASE_URL="https://app.text.lk/api/v3"
+TEXTLK_SEND_ENDPOINT="/sms/send"
+TEXTLK_API_TOKEN="your-secret-token-in-render-only"
+TEXTLK_SENDER_ID="TextLKDemo"
+TEXTLK_DRY_RUN=false
+TEXTLK_TIMEOUT_MS=10000
+TEXTLK_MESSAGE_TYPE="plain"
+```
+
+`TextLKDemo` works only when supported by the Text.lk account. Use an approved Sender ID later. After saving the Render variables, redeploy/restart the API and use the Admin Settings Test SMS action. Never publish or copy the real token into tracked files.
+
+To exercise the same provider safely from a trusted local checkout, first keep `TEXTLK_DRY_RUN=true`, then run:
+
+```powershell
+npm run test:textlk-sms --workspace @pos/api -- 0758396064
+```
+
+Only change `TEXTLK_DRY_RUN=false` when a real SMS charge/send is intended. The CLI normalizes the recipient, prints a token-safe response, and uses `POS SMS API test successful.` as its default message.
 
 ## Common Errors and Fixes
 
@@ -322,6 +352,10 @@ Confirm the root `vercel.json` was used and that the deployment includes its SPA
 - Never expose or paste the Text.lk token into Vercel, frontend code, logs, GitHub, or screenshots.
 - Use a long randomly generated `JWT_SECRET` and rotate it if exposed.
 - Keep `SMS_PROVIDER=mock` and `TEXTLK_DRY_RUN=true` for this demo.
+- For an intentional live Text.lk test, set `SMS_PROVIDER=textlk`, `TEXTLK_DRY_RUN=false`, the API v3 base URL, and the token only in Render environment variables. Never add the token to Vercel.
+- The Text.lk adapter sends the token only as a Bearer authorization header; it is not placed in the request body.
+- `TextLKDemo` may be used only when supported by the Text.lk account. Replace it with an approved Sender ID for later production use.
+- Revoke and regenerate the Text.lk API token immediately if it is exposed.
 - Change default seeded passwords before any hosted or real production use.
 - Restrict access to the Render, Neon, Vercel, and GitHub accounts and enable MFA.
 - Use Neon export/backup capabilities before retaining any important demonstration data.
