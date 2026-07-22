@@ -58,21 +58,38 @@ export async function changeStock(input: {
       await findAndNotifyDesiredItemMatches({ product, branchId: input.branchId, userId: input.userId });
     }
 
-    if (stock.quantity <= stock.lowStockLevel) {
-      const settings = await getBusinessSettings();
-      await createSmsNotification({
-        event: "low_stock_alert",
-        recipient: settings.phone ?? "",
-        message: `Low stock: ${product?.name ?? input.productId} has ${stock.quantity} left.`,
-        payload: { branchId: input.branchId, productId: input.productId, quantity: stock.quantity },
-        createdById: input.userId,
-        sendNow: settings.smsEnabled && settings.lowStockSmsAutoSend
-      });
-    }
+    await createLowStockAlert({
+      branchId: input.branchId,
+      productId: input.productId,
+      productName: product?.name,
+      quantity: stock.quantity,
+      lowStockLevel: stock.lowStockLevel,
+      userId: input.userId
+    });
   } catch (error) {
     console.error("[post-stock-notification]", { productId: input.productId, branchId: input.branchId, error: error instanceof Error ? error.message : String(error) });
   }
   return stock;
+}
+
+export async function createLowStockAlert(input: {
+  branchId: string;
+  productId: string;
+  productName?: string;
+  quantity: number;
+  lowStockLevel: number;
+  userId: string;
+}) {
+  if (input.quantity > input.lowStockLevel) return;
+  const settings = await getBusinessSettings();
+  await createSmsNotification({
+    event: "low_stock_alert",
+    recipient: settings.phone ?? "",
+    message: `Low stock: ${input.productName ?? input.productId} has ${input.quantity} left.`,
+    payload: { branchId: input.branchId, productId: input.productId, quantity: input.quantity, lowStockLevel: input.lowStockLevel },
+    createdById: input.userId,
+    sendNow: settings.smsEnabled && settings.lowStockSmsAutoSend
+  });
 }
 
 async function runSerializable<T>(operation: () => Promise<T>) {

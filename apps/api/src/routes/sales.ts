@@ -9,6 +9,7 @@ import { canSendInvoice, createSmsNotification, notificationToSmsStatus, sendNot
 import { calculateSaleTotals } from "../services/sales.js";
 import { getBusinessSettings, isInvoiceSmsEnabled } from "../services/settings.js";
 import { normalizeSriLankanPhone } from "../services/phone.js";
+import { createLowStockAlert } from "../services/inventory.js";
 
 export const salesRouter = Router();
 
@@ -183,6 +184,27 @@ salesRouter.post("/", requireAuth, salesRoles, async (req, res, next) => {
       } catch (error) {
         console.error("[post-sale-notification]", { saleId: sale.id, error: error instanceof Error ? error.message : String(error) });
       }
+    }
+
+    try {
+      const lowStockRows = await prisma.inventoryStock.findMany({
+        where: {
+          branchId: sale.branchId,
+          productId: { in: sale.items.map((item) => item.productId) },
+          quantity: { lte: prisma.inventoryStock.fields.lowStockLevel }
+        },
+        include: { product: { select: { name: true } } }
+      });
+      await Promise.all(lowStockRows.map((stock) => createLowStockAlert({
+        branchId: stock.branchId,
+        productId: stock.productId,
+        productName: stock.product.name,
+        quantity: stock.quantity,
+        lowStockLevel: stock.lowStockLevel,
+        userId: req.user!.id
+      })));
+    } catch (error) {
+      console.error("[post-sale-low-stock-notification]", { saleId: sale.id, error: error instanceof Error ? error.message : String(error) });
     }
 
     res.status(201).json({ data: sale });

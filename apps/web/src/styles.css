@@ -158,9 +158,20 @@ th { color: var(--muted); font-size: 0.85rem; }
 .required-mark, .optional-mark { margin-left: .3rem; font-size: .72rem; font-weight: 700; }
 .required-mark { color: var(--danger); }
 .optional-mark { color: var(--muted); }
+.field-label { display: inline-flex; align-items: baseline; gap: .3rem; line-height: 1.2; white-space: nowrap; }
+.field-label .optional-mark { margin-left: 0; font-size: .82rem; font-weight: 400; }
 .field-error { border-radius: 6px; padding: .65rem .75rem; color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); font-size: .88rem; }
 input[aria-invalid="true"] { border-color: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 11%, transparent); }
 .modal-actions { display: flex; justify-content: flex-end; gap: .6rem; padding-top: .2rem; }
+.inventory-editor { width: min(780px, 100%); max-height: calc(100vh - 2rem); overflow-y: auto; }
+.inventory-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.form-section-heading { grid-column: 1 / -1; display: flex; align-items: baseline; gap: .75rem; flex-wrap: wrap; }
+.form-section-heading h2 { margin: 0; }
+.inventory-quantity, .inventory-threshold { padding: .85rem; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.inventory-adjustment-reason { grid-column: 1 / -1; }
+.inventory-active { align-self: center; }
+.stock-level { display: inline-flex; min-width: 2.25rem; justify-content: center; padding: .2rem .5rem; border-radius: 999px; background: rgba(148, 163, 184, .12); }
+.stock-level.low { color: #fca5a5; background: rgba(239, 68, 68, .14); }
 
 .pos-grid { grid-template-columns: minmax(0, 1.5fr) minmax(340px, 0.8fr); align-items: start; }
 .product-list { display: grid; gap: 0.5rem; max-height: calc(100vh - 260px); overflow: auto; }
@@ -227,6 +238,7 @@ input[aria-invalid="true"] { border-color: var(--danger); box-shadow: 0 0 0 3px 
   .sidebar nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .pos-grid, .metrics, .toolbar, .form-grid, .dashboard-grid, .settings-grid, .customer-filters { grid-template-columns: 1fr; }
   .cart { position: static; }
+  .inventory-edit-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {

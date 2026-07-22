@@ -53,7 +53,7 @@ reportsRouter.get("/dashboard-summary", requireAuth, async (req, res) => {
   const branchId = branchScope(req.user!);
   const [sales, lowStock, pendingDesired, recentSales, recentMovements, smsSummary, topItems] = await Promise.all([
     prisma.sale.findMany({ where: { createdAt: { gte: start }, status: "COMPLETED", ...(branchId ? { branchId } : {}) } }),
-    prisma.inventoryStock.findMany({ where: { quantity: { lte: 5 }, ...(branchId ? { branchId } : {}) } }),
+    prisma.inventoryStock.findMany({ where: { quantity: { lte: prisma.inventoryStock.fields.lowStockLevel }, ...(branchId ? { branchId } : {}) } }),
     prisma.desiredItemRequest.count({ where: { status: "PENDING_REVIEW", ...(branchId ? { branchId } : {}) } }),
     prisma.sale.findMany({ where: { status: "COMPLETED", ...(branchId ? { branchId } : {}) }, include: { customer: true, branch: true }, orderBy: { createdAt: "desc" }, take: 8 }),
     prisma.stockMovement.findMany({ where: branchId ? { branchId } : undefined, include: { product: true, branch: true, user: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 8 }),

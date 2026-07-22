@@ -56,7 +56,7 @@ export function Settings() {
   if (!settings) return <PagePreloader />;
   return (
     <section className="page">
-      <div className="page-head"><div><h1>Business Settings</h1><span className="muted">{isAdmin ? "Business profile and SMS configuration." : "Read-only settings. Only administrators can make changes."}</span></div>{isAdmin && <button className="primary" onClick={save}>Save settings</button>}</div>
+      <div className="page-head"><div><h1>Business Settings</h1><span className="muted">{isAdmin ? "Business profile, inventory defaults and SMS configuration." : "Read-only settings. Only administrators can make changes."}</span></div>{isAdmin && <button className="primary" onClick={save}>Save settings</button>}</div>
       <fieldset disabled={!isAdmin} className="settings-grid settings-fieldset">
         <div className="panel form-stack">
           <h2>Business Profile</h2>
@@ -66,6 +66,12 @@ export function Settings() {
           <input value={settings.email ?? ""} onChange={(e) => setSettings({ ...settings, email: e.target.value })} placeholder="Email" />
           <input value={settings.taxRegistration ?? ""} onChange={(e) => setSettings({ ...settings, taxRegistration: e.target.value })} placeholder="Tax/registration optional" />
           <input value={settings.receiptFooterText} onChange={(e) => setSettings({ ...settings, receiptFooterText: e.target.value })} placeholder="Receipt footer" />
+        </div>
+        <div className="panel form-stack">
+          <h2>Inventory Settings</h2>
+          <label>Default low-stock level<input type="number" min="1" step="1" value={settings.lowStockThresholdDefault} onChange={(e) => setSettings({ ...settings, lowStockThresholdDefault: Number(e.target.value) })} /></label>
+          <div className="muted">Applied to every branch when a new product is created. Existing products keep their branch-specific level until edited from Inventory.</div>
+          <label className="check"><input type="checkbox" checked={settings.lowStockSmsAutoSend} onChange={(e) => setSettings({ ...settings, lowStockSmsAutoSend: e.target.checked })} /> Auto-send low-stock SMS alerts</label>
         </div>
         <div className="panel form-stack">
           <h2>SMS Settings</h2>
