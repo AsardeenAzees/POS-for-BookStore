@@ -128,11 +128,14 @@ salesRouter.post("/", requireAuth, salesRoles, async (req, res, next) => {
       });
       const invoiceNumber = makeInvoiceNumber(branch.code, sequence.lastValue);
 
-      const stocks = new Map<string, { id: string; quantity: number }>();
+      const stockRows = await tx.inventoryStock.findMany({
+        where: { branchId: branch.id, productId: { in: totals.lines.map((item) => item.productId) } },
+        select: { id: true, productId: true, quantity: true }
+      });
+      const stocks = new Map(stockRows.map((stock) => [stock.productId, stock]));
       for (const item of totals.lines) {
-        const stock = await tx.inventoryStock.findUnique({ where: { branchId_productId: { branchId: branch.id, productId: item.productId } } });
+        const stock = stocks.get(item.productId);
         if (!stock || stock.quantity < item.quantity) throw new HttpError(400, "Insufficient stock for one or more products");
-        stocks.set(item.productId, stock);
       }
 
       const created = await tx.sale.create({
@@ -158,7 +161,11 @@ salesRouter.post("/", requireAuth, salesRoles, async (req, res, next) => {
         await tx.stockMovement.create({ data: { branchId: branch.id, productId: item.productId, userId: req.user!.id, type: "SALE", quantity: item.quantity, beforeQty: stock.quantity, afterQty: stock.quantity - item.quantity, reason: `Sale ${invoiceNumber}`, reference: created.id } });
       }
       return created;
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }));
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      maxWait: 10_000,
+      timeout: 30_000
+    }));
 
     if (sale.customer?.phone && canSendInvoice(sale.customer.notificationPreference)) {
       try {

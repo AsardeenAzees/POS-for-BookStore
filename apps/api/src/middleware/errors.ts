@@ -22,6 +22,9 @@ export function errorHandler(error: unknown, req: Request, res: Response, _next:
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") return res.status(409).json({ error: "A record with the same unique value already exists" });
     if (error.code === "P2025") return res.status(404).json({ error: "Record not found" });
+    if (error.code === "P2021") return res.status(503).json({ error: "Database schema is not ready. Apply the latest migrations and retry." });
+    if (error.code === "P2028") return res.status(503).json({ error: "The database transaction timed out. Please retry the checkout." });
+    if (error.code === "P2034") return res.status(409).json({ error: "Stock changed during checkout. Please review the cart and retry." });
   }
 
   console.error("[api-error]", {
