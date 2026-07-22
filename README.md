@@ -101,18 +101,22 @@ For local development only, seeded users use this password unless `SEED_USER_PAS
 Password123!
 ```
 
-| Role | Email |
-| --- | --- |
-| Admin | admin@bookshop.lk |
-| Manager | manager@bookshop.lk |
-| Cashier | cashier@bookshop.lk |
-| Inventory Staff | inventory@bookshop.lk |
-| Delivery Staff | delivery@bookshop.lk |
-| Demo Viewer (read-only) | demo@bookshop.lk |
+| Role | Branch scope | Email | Intended sample access |
+| --- | --- | --- | --- |
+| Admin | All branches | admin@bookshop.lk | Full system administration |
+| Manager | Colombo | manager@bookshop.lk | Dashboard, POS, inventory, customers, reports and notifications |
+| Manager | Kandy | manager.kandy@bookshop.lk | Same manager workflow, restricted to Kandy data |
+| Cashier | Colombo | cashier@bookshop.lk | POS checkout, receipts, customers and desired-item capture |
+| Cashier | Kandy | cashier.kandy@bookshop.lk | Same cashier workflow, restricted to Kandy data |
+| Inventory Staff | Colombo | inventory.colombo@bookshop.lk | Products, stock movements and desired-item views |
+| Inventory Staff | Kandy | inventory@bookshop.lk | Same inventory workflow, restricted to Kandy data |
+| Delivery Staff | Colombo | delivery.colombo@bookshop.lk | Phase 2 delivery-workflow placeholder |
+| Delivery Staff | Kandy | delivery@bookshop.lk | Phase 2 delivery-workflow placeholder |
+| Demo Viewer | All branches, read-only | demo@bookshop.lk | Read-only dashboards, inventory, invoices and reports |
 
 The public demo login is `demo@bookshop.lk` / `DemoView@2026!`. It can view dashboards, inventory, invoices, and reports but cannot create, update, delete, check out sales, change stock, send notifications, or change settings. This intentionally public read-only credential is separate from all staff and administrator credentials.
 
-The seed command refuses to create fresh production users without explicit passwords. Set a strong `SEED_USER_PASSWORD` and `DEMO_VIEWER_PASSWORD` before running `db:seed` with `NODE_ENV=production`. Existing staff passwords are preserved by the idempotent seed; the dedicated demo password is synchronized from `DEMO_VIEWER_PASSWORD` so the published read-only credential remains usable.
+The seed command refuses to create fresh production users without explicit passwords. Set a strong `SEED_USER_PASSWORD` and `DEMO_VIEWER_PASSWORD` before running `db:seed` with `NODE_ENV=production`. Existing staff passwords are preserved by the idempotent seed while names, roles, branch assignments, and active status are repaired to match the sample definitions. The dedicated demo password is synchronized from `DEMO_VIEWER_PASSWORD` so the published read-only credential remains usable.
 
 ## Useful Commands
 

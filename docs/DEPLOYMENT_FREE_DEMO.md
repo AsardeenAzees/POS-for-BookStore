@@ -120,7 +120,7 @@ For future schema changes, commit a reviewed migration locally and rerun `db:dep
 
 ## Step 5: Seed Production Demo Data Once
 
-Use the Neon direct URL again and choose a strong private password for the five staff users. Do not use `Password123!` on a deployed database. Set the separate read-only visitor password to the credential displayed by the login page.
+Use the Neon direct URL again and choose a strong private password for the branch-aware sample staff users. Do not use `Password123!` on a deployed database. Set the separate read-only visitor password to the credential displayed by the login page.
 
 PowerShell:
 
@@ -146,7 +146,7 @@ npm run db:seed --workspace @pos/api
 unset DATABASE_URL SEED_USER_PASSWORD DEMO_VIEWER_PASSWORD NODE_ENV
 ```
 
-The seed uses unique-key upserts and no-op updates for existing staff users, products, and stock. Rerunning it creates the missing `DEMO_VIEWER` role and `demo@bookshop.lk` user without duplicating records or resetting staff passwords or stock. For safety, it synchronizes the dedicated demo account password from `DEMO_VIEWER_PASSWORD` and enforces its restricted role and active status while leaving all staff accounts unchanged. It should still be treated as a controlled administrative command, not a startup task.
+The seed uses unique-key upserts for staff users, products, and stock. Rerunning it creates missing branch-aware staff accounts and repairs their names, roles, branch assignments, and active status without duplicating records, resetting staff passwords, or resetting stock. It also creates the missing `DEMO_VIEWER` role and `demo@bookshop.lk`, synchronizes only the dedicated demo password from `DEMO_VIEWER_PASSWORD`, and enforces its restricted role. Treat seeding as a controlled administrative command, not a startup task.
 
 The visitor credential is:
 

@@ -33,18 +33,22 @@ async function main() {
   const seedPassword = configuredSeedPassword ?? "Password123!";
   if (!configuredSeedPassword) console.warn("Using the documented local-development seed password. Never use it in a deployed environment.");
   const passwordHash = await bcrypt.hash(seedPassword, 10);
-  const users = [
-    ["Admin User", "admin@bookshop.lk", RoleName.ADMIN, colombo.id],
-    ["Manager User", "manager@bookshop.lk", RoleName.MANAGER, colombo.id],
-    ["Cashier User", "cashier@bookshop.lk", RoleName.CASHIER, colombo.id],
-    ["Inventory User", "inventory@bookshop.lk", RoleName.INVENTORY_STAFF, kandy.id],
-    ["Delivery User", "delivery@bookshop.lk", RoleName.DELIVERY_STAFF, kandy.id]
+  const staffUsers = [
+    { name: "Admin User", email: "admin@bookshop.lk", role: RoleName.ADMIN, branchId: colombo.id },
+    { name: "Manager User", email: "manager@bookshop.lk", role: RoleName.MANAGER, branchId: colombo.id },
+    { name: "Kandy Branch Manager", email: "manager.kandy@bookshop.lk", role: RoleName.MANAGER, branchId: kandy.id },
+    { name: "Cashier User", email: "cashier@bookshop.lk", role: RoleName.CASHIER, branchId: colombo.id },
+    { name: "Kandy Cashier", email: "cashier.kandy@bookshop.lk", role: RoleName.CASHIER, branchId: kandy.id },
+    { name: "Colombo Inventory Staff", email: "inventory.colombo@bookshop.lk", role: RoleName.INVENTORY_STAFF, branchId: colombo.id },
+    { name: "Inventory User", email: "inventory@bookshop.lk", role: RoleName.INVENTORY_STAFF, branchId: kandy.id },
+    { name: "Colombo Delivery Staff", email: "delivery.colombo@bookshop.lk", role: RoleName.DELIVERY_STAFF, branchId: colombo.id },
+    { name: "Delivery User", email: "delivery@bookshop.lk", role: RoleName.DELIVERY_STAFF, branchId: kandy.id }
   ] as const;
 
-  for (const [name, email, role, branchId] of users) {
+  for (const { name, email, role, branchId } of staffUsers) {
     await prisma.user.upsert({
       where: { email },
-      update: {},
+      update: { name, roleId: roleId(role), branchId, active: true },
       create: { name, email, passwordHash, roleId: roleId(role), branchId }
     });
   }
