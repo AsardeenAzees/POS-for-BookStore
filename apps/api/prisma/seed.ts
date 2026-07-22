@@ -48,8 +48,9 @@ async function main() {
       create: { name, email, passwordHash, roleId: roleId(role), branchId }
     });
   }
-
-  const school = await prisma.category.upsert({ where: { name: "School Books" }, update: {}, create: { name: "School Books" } });
+ });
+  }
+l Books" }, update: {}, create: { name: "School Books" } });
   const stationery = await prisma.category.upsert({ where: { name: "Stationery" }, update: {}, create: { name: "Stationery" } });
   const fiction = await prisma.category.upsert({ where: { name: "Fiction" }, update: {}, create: { name: "Fiction" } });
 

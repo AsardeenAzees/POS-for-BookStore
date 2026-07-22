@@ -146,7 +146,7 @@ npm run db:seed --workspace @pos/api
 unset DATABASE_URL SEED_USER_PASSWORD DEMO_VIEWER_PASSWORD NODE_ENV
 ```
 
-The seed uses unique-key upserts and no-op updates for existing staff users, products, and stock. Rerunning it creates the missing `DEMO_VIEWER` role and `demo@bookshop.lk` user without duplicating records or resetting passwords or stock. For safety, it enforces the restricted role and active status on the dedicated demo email while leaving all staff role assignments unchanged. It should still be treated as a controlled administrative command, not a startup task.
+The seed uses unique-key upserts and no-op updates for existing staff users, products, and stock. Rerunning it creates the missing `DEMO_VIEWER` role and `demo@bookshop.lk` user without duplicating records or resetting staff passwords or stock. For safety, it synchronizes the dedicated demo account password from `DEMO_VIEWER_PASSWORD` and enforces its restricted role and active status while leaving all staff accounts unchanged. It should still be treated as a controlled administrative command, not a startup task.
 
 The visitor credential is:
 
