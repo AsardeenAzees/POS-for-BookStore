@@ -139,6 +139,8 @@ th { color: var(--muted); font-size: 0.85rem; }
 .check { display: flex; align-items: center; gap: 0.5rem; color: var(--text); }
 .check input { width: auto; }
 .safe-secret { border: 1px solid var(--line); border-radius: 6px; padding: 0.7rem; color: var(--muted); background: var(--soft); }
+.sms-test-progress { display: flex; align-items: center; gap: .8rem; min-height: 72px; border: 1px solid var(--line); border-radius: 6px; padding: .65rem .85rem; color: var(--muted); background: var(--soft); }
+.sms-test-progress .preloader { min-height: 54px; width: 72px; padding: 0; }
 .search { display: flex; align-items: center; gap: 0.5rem; border: 1px solid var(--line); border-radius: 6px; padding: 0 0.7rem; margin: 1rem 0; }
 .search input { border: 0; padding-left: 0; }
 .customer-filters { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(180px, 240px); gap: .75rem; align-items: end; }

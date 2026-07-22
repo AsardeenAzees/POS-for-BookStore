@@ -85,7 +85,11 @@ settingsRouter.post("/test-sms", requireAuth, requireRoles(RoleName.ADMIN), asyn
       ...sent,
       smsStatus,
       providerMessageId: sent.providerRef ?? undefined,
-      rawStatus: typeof providerResponse?.rawStatus === "string" ? providerResponse.rawStatus : undefined
+      rawStatus: typeof providerResponse?.rawStatus === "string" ? providerResponse.rawStatus : undefined,
+      recipient: typeof providerResponse?.recipient === "string" ? providerResponse.recipient : sent.recipient,
+      senderId: typeof providerResponse?.senderId === "string" ? providerResponse.senderId : undefined,
+      smsCount: typeof providerResponse?.smsCount === "number" ? providerResponse.smsCount : undefined,
+      cost: typeof providerResponse?.cost === "string" ? providerResponse.cost : undefined
     };
     if (sent.status === "FAILED" || sent.status === "SKIPPED") {
       return res.status(400).json({ data: result, error: sent.errorMessage ?? sent.error ?? "SMS failed" });

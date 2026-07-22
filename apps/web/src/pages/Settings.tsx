@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ApiError, api, getSession } from "../lib/api";
 import type { BusinessSettings } from "../lib/types";
 import { useToast } from "../components/Toast";
-import { PagePreloader } from "../components/Preloader";
+import { PagePreloader, Preloader } from "../components/Preloader";
 
 export function Settings() {
   const toast = useToast();
@@ -80,13 +80,18 @@ export function Settings() {
           <div className="safe-secret">Text.lk API token: {settings.textlkApiTokenStatus ?? "not_configured"}</div>
           <label>Test recipient<input value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="0758396064 or 94758396064" /></label>
           <label>Test message<textarea value={testMessage} onChange={(e) => setTestMessage(e.target.value)} placeholder="POS SMS API test successful." rows={3} /></label>
-          <button type="button" onClick={testSms} disabled={testingSms || !testPhone.trim()}>{testingSms ? "Sending..." : smsTestButtonLabel(settings)}</button>
-          {testResult && <div className={testResult.status === "FAILED" || testResult.status === "SKIPPED" ? "alert" : "safe-secret"} role="status">
-            <strong>{testResult.status === "FAILED" || testResult.status === "SKIPPED" ? "SMS test failed" : "SMS test completed"}</strong>
+          <button className="primary" type="button" onClick={testSms} disabled={testingSms || !testPhone.trim()}>{testingSms && <span className="button-spinner" aria-hidden="true" />}{testingSms ? "Sending SMS..." : smsTestButtonLabel(settings)}</button>
+          {testingSms && <div className="sms-test-progress" role="status" aria-live="polite"><Preloader compact /><strong>Sending through {settings.smsProvider === "textlk" ? "Text.lk" : "mock provider"}...</strong></div>}
+          {!testingSms && testResult && <div className={smsTestFailed(testResult) ? "alert" : "safe-secret"} role="status" aria-live="polite">
+            <strong>{smsTestResultTitle(testResult)}</strong>
             <div>Provider: {testResult.provider}</div>
             <div>Status: {testResult.smsStatus ?? testResult.status.toLowerCase()}</div>
             {testResult.providerMessageId && <div>Provider message ID: {testResult.providerMessageId}</div>}
             {testResult.rawStatus && <div>Delivery status: {testResult.rawStatus}</div>}
+            {testResult.recipient && <div>Recipient: {testResult.recipient}</div>}
+            {testResult.senderId && <div>Sender ID: {testResult.senderId}</div>}
+            {testResult.smsCount !== undefined && <div>SMS count: {testResult.smsCount}</div>}
+            {testResult.cost && <div>Cost: {testResult.cost}</div>}
             {testResult.errorMessage && <div>{testResult.errorMessage}</div>}
           </div>}
           <div className="muted">Text.lk request format: recipient, sender_id, type, message.</div>
@@ -103,9 +108,24 @@ type SmsTestResult = {
   providerMessageId?: string;
   rawStatus?: string;
   errorMessage?: string;
+  recipient?: string;
+  senderId?: string;
+  smsCount?: number;
+  cost?: string;
 };
 
 function smsTestButtonLabel(settings: BusinessSettings) {
   if (settings.smsProvider === "mock") return "Record mock SMS test";
   return settings.textlkDryRun ? "Run Text.lk dry-run" : "Send real test SMS";
+}
+
+function smsTestFailed(result: SmsTestResult) {
+  return result.status === "FAILED" || result.status === "SKIPPED" || result.smsStatus === "failed";
+}
+
+function smsTestResultTitle(result: SmsTestResult) {
+  if (smsTestFailed(result)) return "SMS delivery failed";
+  if (result.smsStatus === "dry_run") return "SMS dry-run completed — no message was delivered";
+  if (result.rawStatus?.toLowerCase() === "delivered") return "SMS delivered successfully";
+  return "SMS accepted successfully";
 }
